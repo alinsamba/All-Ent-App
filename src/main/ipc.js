@@ -152,6 +152,37 @@ async function fetchImageAsBase64(url, defaultContentType, logError = false) {
 
 function registerIpcHandlers() {
   ipcMain.on('switch-app', (e, { url, siteId, forceNavigate }) => {
+    // Security Fix: Validate URL against allowed settings
+    let isValidUrl = false;
+    try {
+      // If no url is provided, skip URL validation (just focus switch)
+      if (!url) {
+        isValidUrl = true;
+      } else {
+        const parsed = new URL(url);
+        if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+          if (state.settings && state.settings.sites) {
+            isValidUrl = state.settings.sites.some(site => {
+              try {
+                const siteUrl = new URL(site.url);
+                const baseHost = siteUrl.hostname.replace(/^www\./, '');
+                return parsed.hostname === baseHost || parsed.hostname.endsWith('.' + baseHost);
+              } catch (err) {
+                return false;
+              }
+            });
+          }
+        }
+      }
+    } catch (err) {
+      isValidUrl = false;
+    }
+
+    if (!isValidUrl) {
+      console.warn(`[Security] Blocked unauthorized URL navigation attempt in switch-app: ${url}`);
+      return;
+    }
+
     const isNew = !state.views.has(siteId);
     if (isNew && state.win && !state.win.isDestroyed()) {
       state.win.webContents.send('show-loader');
