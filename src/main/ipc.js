@@ -197,11 +197,31 @@ function registerIpcHandlers() {
   ipcMain.on('update-settings', (e, newSettings) => {
     const oldAdBlock = state.settings.adBlockEnabled;
     
-    // Clean up views for deleted sites
+    // Clean up views for deleted sites or sites whose URLs have changed
     if (newSettings && newSettings.sites) {
-      const currentSiteIds = new Set(newSettings.sites.map(s => s.id));
+      const currentSiteMap = new Map(newSettings.sites.map(s => [s.id, s.url]));
       state.views.forEach((view, siteId) => {
-        if (!currentSiteIds.has(siteId)) {
+        const currentUrlForSite = currentSiteMap.get(siteId);
+
+        let shouldDestroy = false;
+        if (!currentUrlForSite) {
+          shouldDestroy = true; // Site was deleted
+        } else {
+          // Extract base origins to compare properly
+          try {
+            const newUrlObj = new URL(currentUrlForSite);
+            const oldUrlObj = new URL(view.webContents.getURL());
+
+            // Re-create the view if the core origin changes (e.g. they edited the site URL from youtube to spotify)
+            if (newUrlObj.origin !== oldUrlObj.origin) {
+              shouldDestroy = true;
+            }
+          } catch(e) {
+             shouldDestroy = true;
+          }
+        }
+
+        if (shouldDestroy) {
           try {
             if (state.win) {
               state.win.contentView.removeChildView(view);
@@ -764,9 +784,11 @@ function registerIpcHandlers() {
 
           if (imgRes.ok) {
             const contentType = imgRes.headers.get('content-type') || 'image/png';
-            const buffer = await imgRes.arrayBuffer();
-            const base64Data = Buffer.from(buffer).toString('base64');
-            base64Icon = `data:${contentType};base64,${base64Data}`;
+            if (contentType.startsWith('image/')) {
+              const buffer = await imgRes.arrayBuffer();
+              const base64Data = Buffer.from(buffer).toString('base64');
+              base64Icon = `data:${contentType};base64,${base64Data}`;
+            }
           }
         } catch (e) {
           console.warn(`Failed to fetch extracted favicon from ${iconUrl}:`, e.message);
@@ -783,9 +805,11 @@ function registerIpcHandlers() {
 
           if (imgRes.ok) {
             const contentType = imgRes.headers.get('content-type') || 'image/x-icon';
-            const buffer = await imgRes.arrayBuffer();
-            const base64Data = Buffer.from(buffer).toString('base64');
-            base64Icon = `data:${contentType};base64,${base64Data}`;
+            if (contentType.startsWith('image/')) {
+              const buffer = await imgRes.arrayBuffer();
+              const base64Data = Buffer.from(buffer).toString('base64');
+              base64Icon = `data:${contentType};base64,${base64Data}`;
+            }
           }
         } catch (e) {}
       }
@@ -800,9 +824,11 @@ function registerIpcHandlers() {
 
           if (gRes.ok) {
             const contentType = gRes.headers.get('content-type') || 'image/png';
-            const buffer = await gRes.arrayBuffer();
-            const base64Data = Buffer.from(buffer).toString('base64');
-            base64Icon = `data:${contentType};base64,${base64Data}`;
+            if (contentType.startsWith('image/')) {
+              const buffer = await gRes.arrayBuffer();
+              const base64Data = Buffer.from(buffer).toString('base64');
+              base64Icon = `data:${contentType};base64,${base64Data}`;
+            }
           }
         } catch (e) {}
       }
