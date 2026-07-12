@@ -407,7 +407,11 @@ function switchAppView(url, siteId, forceNavigate = false) {
     
     const oldLeftView = state.views.get(state.leftSiteId);
     if (oldLeftView && oldLeftView !== targetView && state.rightSiteId !== state.leftSiteId) {
-      try { state.win.contentView.removeChildView(oldLeftView); } catch(e) {}
+      try {
+        state.win.contentView.removeChildView(oldLeftView);
+      } catch (e) {
+        console.error('Error removing old left view:', e);
+      }
     }
 
     state.leftSiteId = siteId;
