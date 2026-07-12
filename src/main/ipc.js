@@ -7,11 +7,61 @@ const path = require('path');
 const fs = require('fs');
 const fetch = require('cross-fetch');
 const AdmZip = require('adm-zip');
+const net = require('net');
+const dns = require('dns').promises;
 const state = require('./state');
 const { saveSettings } = require('./settings');
 const { injectVolume } = require('./window');
 
 let extensionPopupWin = null;
+
+function isPrivateIP(ip) {
+  if (net.isIPv4(ip)) {
+    const parts = ip.split('.').map(Number);
+    return (
+      parts[0] === 10 ||
+      (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) ||
+      (parts[0] === 192 && parts[1] === 168) ||
+      parts[0] === 127 ||
+      (parts[0] === 169 && parts[1] === 254) ||
+      parts[0] === 0
+    );
+  } else if (net.isIPv6(ip)) {
+    const normalized = ip.toLowerCase();
+    if (normalized === '::' || normalized === '::1' || normalized === '0:0:0:0:0:0:0:1') return true;
+    if (normalized.startsWith('::ffff:')) {
+      const ipv4 = normalized.split('::ffff:')[1];
+      if (net.isIPv4(ipv4)) return isPrivateIP(ipv4);
+    }
+    if (normalized.startsWith('fc') || normalized.startsWith('fd')) return true;
+    if (normalized.startsWith('fe8') || normalized.startsWith('fe9') || normalized.startsWith('fea') || normalized.startsWith('feb')) return true;
+  }
+  return false;
+}
+
+async function isSafeUrl(urlString) {
+  try {
+    const parsedUrl = new URL(urlString);
+    if (parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:') {
+      return false;
+    }
+    const hostname = parsedUrl.hostname;
+
+    if (hostname === 'localhost' || hostname.endsWith('.localhost') || hostname.endsWith('.local')) {
+      return false;
+    }
+
+    let ipAddress = hostname;
+    if (!net.isIP(hostname)) {
+      const { address } = await dns.lookup(hostname);
+      ipAddress = address;
+    }
+
+    return !isPrivateIP(ipAddress);
+  } catch (e) {
+    return false;
+  }
+}
 
 function registerIpcHandlers() {
   ipcMain.on('switch-app', (e, { url, siteId, forceNavigate }) => {
@@ -693,10 +743,11 @@ function registerIpcHandlers() {
       let iconUrl = null;
       let base64Icon = null;
 
-      try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 4000);
-        const response = await fetch(origin, {
+      if (await isSafeUrl(origin)) {
+        try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 4000);
+          const response = await fetch(origin, {
           signal: controller.signal,
           headers: {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
@@ -737,25 +788,26 @@ function registerIpcHandlers() {
             }
           }
 
-          if (candidateIcons.length > 0) {
-            candidateIcons.sort((a, b) => b.priority - a.priority);
-            const bestHref = candidateIcons[0].href;
-            if (bestHref.startsWith('//')) {
-              iconUrl = 'https:' + bestHref;
-            } else if (bestHref.startsWith('/')) {
-              iconUrl = origin + bestHref;
-            } else if (bestHref.startsWith('http://') || bestHref.startsWith('https://')) {
-              iconUrl = bestHref;
-            } else {
-              iconUrl = new URL(bestHref, origin).toString();
+            if (candidateIcons.length > 0) {
+              candidateIcons.sort((a, b) => b.priority - a.priority);
+              const bestHref = candidateIcons[0].href;
+              if (bestHref.startsWith('//')) {
+                iconUrl = 'https:' + bestHref;
+              } else if (bestHref.startsWith('/')) {
+                iconUrl = origin + bestHref;
+              } else if (bestHref.startsWith('http://') || bestHref.startsWith('https://')) {
+                iconUrl = bestHref;
+              } else {
+                iconUrl = new URL(bestHref, origin).toString();
+              }
             }
           }
+        } catch (e) {
+          console.warn('Failed to parse site HTML for favicon:', e.message);
         }
-      } catch (e) {
-        console.warn('Failed to parse site HTML for favicon:', e.message);
       }
 
-      if (iconUrl) {
+      if (iconUrl && await isSafeUrl(iconUrl)) {
         try {
           const controller = new AbortController();
           const timeoutId = setTimeout(() => controller.abort(), 3000);
@@ -776,16 +828,18 @@ function registerIpcHandlers() {
       if (!base64Icon) {
         try {
           const fallbackUrl = `${origin}/favicon.ico`;
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 3000);
-          const imgRes = await fetch(fallbackUrl, { signal: controller.signal });
-          clearTimeout(timeoutId);
+          if (await isSafeUrl(fallbackUrl)) {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 3000);
+            const imgRes = await fetch(fallbackUrl, { signal: controller.signal });
+            clearTimeout(timeoutId);
 
-          if (imgRes.ok) {
-            const contentType = imgRes.headers.get('content-type') || 'image/x-icon';
-            const buffer = await imgRes.arrayBuffer();
-            const base64Data = Buffer.from(buffer).toString('base64');
-            base64Icon = `data:${contentType};base64,${base64Data}`;
+            if (imgRes.ok) {
+              const contentType = imgRes.headers.get('content-type') || 'image/x-icon';
+              const buffer = await imgRes.arrayBuffer();
+              const base64Data = Buffer.from(buffer).toString('base64');
+              base64Icon = `data:${contentType};base64,${base64Data}`;
+            }
           }
         } catch (e) {}
       }
