@@ -117,7 +117,7 @@ src/
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/alinsamba/GeniusRip.git
+   git clone https://github.com/alinsamba/All-Ent-App.git
    cd GeniusRip
    ```
 
