@@ -251,25 +251,34 @@ let currentSettings = null;
 
     function renderSidebar() {
       const container = document.getElementById('sites-container');
-      container.innerHTML = '';
       if (!currentSettings || !currentSettings.sites) return;
       
+      const existingNodes = Array.from(container.children);
+      const newIds = new Set(currentSettings.sites.map(s => s.id));
+
+      existingNodes.forEach(node => {
+        if (!newIds.has(node.id)) {
+          container.removeChild(node);
+        }
+      });
+
       currentSettings.sites.forEach((site, index) => {
-        const div = document.createElement('div');
+        let div = document.getElementById(site.id);
+        if (!div) {
+          div = document.createElement('div');
+          div.id = site.id;
+        }
+        container.appendChild(div);
+
         div.className = 'icon' + (index === 0 ? ' active' : '');
-        div.id = site.id;
         div.title = site.name;
         div.onclick = () => switchApp(site.url, site.id);
         
         if (site.icon && site.icon.startsWith('data:')) {
-          const img = document.createElement('img');
-          img.src = site.icon;
-          div.appendChild(img);
+          div.innerHTML = `<img src="${site.icon}">`;
         } else {
           div.innerHTML = site.svg;
         }
-        
-        container.appendChild(div);
       });
     }
 
@@ -374,7 +383,6 @@ let currentSettings = null;
 
     function renderManageSites() {
       const list = document.getElementById('manage-sites-list');
-      list.innerHTML = '';
       if (!currentSettings || !currentSettings.sites) return;
       
       const totalSites = currentSettings.sites.length;
@@ -383,13 +391,28 @@ let currentSettings = null;
         heading.textContent = `Manage Sites (${totalSites}/10)`;
       }
 
+      const existingNodes = Array.from(list.children);
+      const newIds = new Set(currentSettings.sites.map(s => 'manage-site-' + s.id));
+
+      existingNodes.forEach(node => {
+        if (!newIds.has(node.id)) {
+          list.removeChild(node);
+        }
+      });
+
       currentSettings.sites.forEach((site, index) => {
-        const item = document.createElement('div');
-        item.style.display = 'flex';
-        item.style.justifyContent = 'space-between';
-        item.style.alignItems = 'center';
-        item.style.padding = '10px';
-        item.style.borderBottom = '1px solid var(--border)';
+        const rowId = 'manage-site-' + site.id;
+        let item = document.getElementById(rowId);
+        if (!item) {
+          item = document.createElement('div');
+          item.id = rowId;
+          item.style.display = 'flex';
+          item.style.justifyContent = 'space-between';
+          item.style.alignItems = 'center';
+          item.style.padding = '10px';
+          item.style.borderBottom = '1px solid var(--border)';
+        }
+        list.appendChild(item);
         
         let iconHtml = '';
         if (site.icon && site.icon.startsWith('data:')) {
@@ -434,7 +457,6 @@ let currentSettings = null;
             </div>
           `;
         }
-        list.appendChild(item);
       });
     }
 
@@ -629,7 +651,6 @@ let currentSettings = null;
     async function updateExtensionsList() {
       currentSettings = await window.api.getSettings();
       const list = document.getElementById('extensions-list');
-      list.innerHTML = '';
       
       let loadedExtensions = [];
       try {
@@ -638,47 +659,72 @@ let currentSettings = null;
         console.error('Failed to get loaded extensions:', err);
       }
       
+      const existingNodes = Array.from(list.children);
+      const newIds = new Set(loadedExtensions.map(ext => 'ext-item-' + ext.id));
+      if (loadedExtensions.length === 0) newIds.add('ext-empty');
+
+      existingNodes.forEach(node => {
+        if (!newIds.has(node.id)) {
+          list.removeChild(node);
+        }
+      });
+
       if (loadedExtensions.length > 0) {
         loadedExtensions.forEach(ext => {
-          const li = document.createElement('li');
-          li.style.display = 'flex';
-          li.style.justifyContent = 'space-between';
-          li.style.alignItems = 'center';
-          li.style.padding = '12px 16px';
-          li.style.background = 'rgba(255, 255, 255, 0.03)';
-          li.style.border = '1px solid var(--border)';
-          li.style.borderRadius = '8px';
-          li.style.marginBottom = '8px';
+          const rowId = 'ext-item-' + ext.id;
+          let li = document.getElementById(rowId);
+          if (!li) {
+            li = document.createElement('li');
+            li.id = rowId;
+            li.style.display = 'flex';
+            li.style.justifyContent = 'space-between';
+            li.style.alignItems = 'center';
+            li.style.padding = '12px 16px';
+            li.style.background = 'rgba(255, 255, 255, 0.03)';
+            li.style.border = '1px solid var(--border)';
+            li.style.borderRadius = '8px';
+            li.style.marginBottom = '8px';
+
+            const infoDiv = document.createElement('div');
+            infoDiv.style.display = 'flex';
+            infoDiv.style.flexDirection = 'column';
+            infoDiv.style.gap = '4px';
+            infoDiv.style.overflow = 'hidden';
+            infoDiv.style.paddingRight = '15px';
+
+            const titleSpan = document.createElement('span');
+            titleSpan.className = 'ext-title';
+            titleSpan.style.fontWeight = '600';
+            titleSpan.style.fontSize = '14px';
+
+            const pathSpan = document.createElement('span');
+            pathSpan.className = 'ext-path';
+            pathSpan.style.fontSize = '11px';
+            pathSpan.style.color = 'var(--text-muted)';
+            pathSpan.style.wordBreak = 'break-all';
+
+            infoDiv.appendChild(titleSpan);
+            infoDiv.appendChild(pathSpan);
+
+            const removeBtn = document.createElement('button');
+            removeBtn.className = 'secondary';
+            removeBtn.style.padding = '6px 12px';
+            removeBtn.style.fontSize = '12px';
+            removeBtn.style.flexShrink = '0';
+            removeBtn.textContent = 'Remove';
+
+            li.appendChild(infoDiv);
+            li.appendChild(removeBtn);
+          }
+          list.appendChild(li);
+          
+          const titleSpan = li.querySelector('.ext-title');
+          const pathSpan = li.querySelector('.ext-path');
+          const removeBtn = li.querySelector('button');
           
           const isWebstore = ext.path.includes('extensions' + (ext.path.includes('\\') ? '\\' : '/'));
-          
-          const infoDiv = document.createElement('div');
-          infoDiv.style.display = 'flex';
-          infoDiv.style.flexDirection = 'column';
-          infoDiv.style.gap = '4px';
-          infoDiv.style.overflow = 'hidden';
-          infoDiv.style.paddingRight = '15px';
-          
-          const titleSpan = document.createElement('span');
-          titleSpan.style.fontWeight = '600';
-          titleSpan.style.fontSize = '14px';
           titleSpan.textContent = `${ext.name} (v${ext.version})`;
-          
-          const pathSpan = document.createElement('span');
-          pathSpan.style.fontSize = '11px';
-          pathSpan.style.color = 'var(--text-muted)';
-          pathSpan.style.wordBreak = 'break-all';
           pathSpan.textContent = isWebstore ? `ID: ${ext.id}` : ext.path;
-          
-          infoDiv.appendChild(titleSpan);
-          infoDiv.appendChild(pathSpan);
-          
-          const removeBtn = document.createElement('button');
-          removeBtn.className = 'secondary';
-          removeBtn.style.padding = '6px 12px';
-          removeBtn.style.fontSize = '12px';
-          removeBtn.style.flexShrink = '0';
-          removeBtn.textContent = 'Remove';
           removeBtn.onclick = async () => {
             if (confirm(`Are you sure you want to remove this extension?\n\n${ext.name}`)) {
               const success = await window.api.removeExtension(ext.path);
@@ -690,18 +736,18 @@ let currentSettings = null;
               }
             }
           };
-          
-          li.appendChild(infoDiv);
-          li.appendChild(removeBtn);
-          list.appendChild(li);
         });
       } else {
-        const li = document.createElement('li');
-        li.textContent = "No extensions loaded yet.";
-        li.style.background = "transparent";
-        li.style.border = "1px dashed rgba(255,255,255,0.2)";
-        li.style.color = "var(--text-muted)";
-        list.appendChild(li);
+        let li = document.getElementById('ext-empty');
+        if (!li) {
+          li = document.createElement('li');
+          li.id = 'ext-empty';
+          li.textContent = "No extensions loaded yet.";
+          li.style.background = "transparent";
+          li.style.border = "1px dashed rgba(255,255,255,0.2)";
+          li.style.color = "var(--text-muted)";
+          list.appendChild(li);
+        }
       }
     }
 

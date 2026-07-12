@@ -9,6 +9,19 @@ const state = require('./state');
 function injectVolume(webContents, volume) {
   webContents.executeJavaScript(`
     (function() {
+      if (window.__volumeOverridden) {
+        window.__currentAppVolume = ${volume};
+        const mediaElements = Array.from(document.querySelectorAll('video, audio'));
+        mediaElements.forEach(media => {
+          if (window.__realVolumeSet) {
+            try { window.__realVolumeSet.call(media, ${volume}); } catch (e) {}
+          } else {
+            media.volume = ${volume};
+          }
+          media.muted = false;
+        });
+        return;
+      }
       if (!window.__volumeOverridden) {
         window.__volumeOverridden = true;
         const originalDescriptor = Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype, 'volume');
@@ -254,6 +267,41 @@ const handleShortcut = (event, input) => {
   }
 };
 
+
+const MAX_CACHED_VIEWS = 3;
+let viewHistory = [];
+
+function recordViewAccess(siteId) {
+  viewHistory = viewHistory.filter(id => id !== siteId);
+  viewHistory.push(siteId);
+}
+
+function pruneViews() {
+  const activeViews = new Set();
+  if (state.leftSiteId) activeViews.add(state.leftSiteId);
+  if (state.isSplitMode && state.rightSiteId) activeViews.add(state.rightSiteId);
+
+  // Keep up to MAX_CACHED_VIEWS views
+  const keepViews = new Set(activeViews);
+  for (let i = viewHistory.length - 1; i >= 0 && keepViews.size < MAX_CACHED_VIEWS; i--) {
+    keepViews.add(viewHistory[i]);
+  }
+
+  for (const [id, view] of state.views.entries()) {
+    if (!keepViews.has(id)) {
+      try {
+        if (state.win && state.win.contentView) {
+          state.win.contentView.removeChildView(view);
+        }
+      } catch (e) {}
+      try {
+        view.webContents.close();
+      } catch (e) {}
+      state.views.delete(id);
+    }
+  }
+}
+
 function getOrCreateSiteView(siteId, url) {
   if (state.views.has(siteId)) {
     return state.views.get(siteId);
@@ -396,13 +444,9 @@ const resizeView = () => {
 };
 
 let resizeTimeout1 = null;
-let resizeTimeout2 = null;
 const resizeViewDelayed = () => {
-  resizeView();
   if (resizeTimeout1) clearTimeout(resizeTimeout1);
-  if (resizeTimeout2) clearTimeout(resizeTimeout2);
   resizeTimeout1 = setTimeout(resizeView, 50);
-  resizeTimeout2 = setTimeout(resizeView, 150);
 };
 
 function switchAppView(url, siteId, forceNavigate = false) {
@@ -415,6 +459,7 @@ function switchAppView(url, siteId, forceNavigate = false) {
 
   // Get or create the target view
   const targetView = getOrCreateSiteView(siteId, url);
+  recordViewAccess(siteId);
 
   if (forceNavigate) {
     targetView.webContents.loadURL(url);
@@ -441,6 +486,7 @@ function switchAppView(url, siteId, forceNavigate = false) {
     state.win.webContents.send('page-navigated', currentUrl);
     
     resizeViewDelayed();
+    pruneViews();
   } else {
     state.views.forEach((v, id) => {
       if (id !== siteId) {
@@ -461,6 +507,7 @@ function switchAppView(url, siteId, forceNavigate = false) {
     state.win.webContents.send('page-navigated', currentUrl);
 
     resizeViewDelayed();
+    pruneViews();
   }
 
   // Sync loader overlay based on current load state of the newly active view
@@ -496,6 +543,7 @@ function setSplitScreenMode(rightSiteId, enable) {
     
     const isNew = !state.views.has(rightSiteId);
     const rightView = getOrCreateSiteView(rightSiteId, rightSite.url);
+    recordViewAccess(rightSiteId);
     if (!isNew) {
       console.log(`[Split Screen] Reloading right-side view to base URL`);
       rightView.webContents.loadURL(rightSite.url);
@@ -521,6 +569,7 @@ function setSplitScreenMode(rightSiteId, enable) {
     }
 
     resizeViewDelayed();
+    pruneViews();
   } else {
     console.log(`[Split Screen] Disabling split screen`);
     const rightView = state.views.get(state.rightSiteId);

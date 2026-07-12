@@ -2,7 +2,7 @@ jest.mock('electron', () => ({
   app: {
     getPath: jest.fn(() => '/mocked/userData'),
   },
-}));
+}), { virtual: true });
 
 jest.mock('fs');
 
@@ -16,26 +16,21 @@ describe('loadSettings', () => {
   });
 
   it('should catch JSON parsing errors and use default settings', () => {
-    // Arrange
     fs.existsSync.mockReturnValue(true);
-    fs.readFileSync.mockReturnValue('{ malformed json }'); // This will cause JSON.parse to throw
+    fs.readFileSync.mockReturnValue('{ malformed json }');
 
     const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
 
-    // Act
     const loaded = loadSettings();
 
-    // Assert
     expect(fs.existsSync).toHaveBeenCalledWith(expect.stringContaining('settings.json'));
     expect(fs.readFileSync).toHaveBeenCalledWith(expect.stringContaining('settings.json'), 'utf8');
 
-    // Verify console.error was called with the correct message
     expect(consoleErrorSpy).toHaveBeenCalledWith(
       'Error loading settings',
       expect.any(SyntaxError)
     );
 
-    // Verify it returns default settings when JSON parsing fails
     expect(loaded).toEqual({
       extensions: [],
       sites: defaultSites,
@@ -44,11 +39,9 @@ describe('loadSettings', () => {
       volume: 1.0,
     });
 
-    // Verify state was correctly updated
     expect(state.settings).toEqual(loaded);
     expect(state.appVolume).toBe(1.0);
 
-    // Cleanup
     consoleErrorSpy.mockRestore();
   });
 });

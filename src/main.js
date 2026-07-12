@@ -54,21 +54,23 @@ app.whenReady().then(async () => {
   app.setName('All Ent App');
   loadSettings();
   
-  // Load saved extensions securely
+  // Load saved extensions asynchronously after a short delay
   if (state.settings && state.settings.extensions) {
-    const appSession = session.fromPartition('persist:allentapp');
-    for (const extPath of state.settings.extensions) {
-      try {
-        await session.defaultSession.extensions.loadExtension(extPath);
-      } catch (e) {
-        console.error('Failed to load saved extension in defaultSession:', extPath, e);
+    setTimeout(async () => {
+      const appSession = session.fromPartition('persist:allentapp');
+      for (const extPath of state.settings.extensions) {
+        try {
+          await session.defaultSession.extensions.loadExtension(extPath);
+        } catch (e) {
+          console.error('Failed to load saved extension in defaultSession:', extPath, e);
+        }
+        try {
+          await appSession.extensions.loadExtension(extPath);
+        } catch (e) {
+          console.error('Failed to load saved extension in persist:allentapp session:', extPath, e);
+        }
       }
-      try {
-        await appSession.extensions.loadExtension(extPath);
-      } catch (e) {
-        console.error('Failed to load saved extension in persist:allentapp session:', extPath, e);
-      }
-    }
+    }, 500);
   }
 
   await initAdblocker();

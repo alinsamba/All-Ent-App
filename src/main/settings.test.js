@@ -13,16 +13,23 @@ jest.mock('electron', () => ({
 describe('settings.js', () => {
   describe('saveSettings', () => {
     it('should save settings to state and file system', () => {
+      jest.useFakeTimers();
       const mockSettings = { adBlockEnabled: false, volume: 0.5 };
       const expectedPath = path.join('/mock/user/data', 'settings.json');
 
       saveSettings(mockSettings);
 
       expect(state.settings).toEqual(mockSettings);
-      expect(fs.writeFileSync).toHaveBeenCalledWith(
+
+      jest.runAllTimers();
+
+      expect(fs.writeFile).toHaveBeenCalledWith(
         expectedPath,
-        JSON.stringify(mockSettings, null, 2)
+        JSON.stringify(mockSettings, null, 2),
+        expect.any(Function)
       );
+
+      jest.useRealTimers();
     });
   });
 });

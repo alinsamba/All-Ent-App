@@ -22,7 +22,6 @@ async function initAdblocker() {
       removed: []
     });
     if (state.settings.adBlockEnabled !== false) {
-      state.blocker.enableBlockingInSession(session.defaultSession);
       state.blocker.enableBlockingInSession(session.fromPartition('persist:allentapp'));
       console.log('Adblocker initialized and enabled (with YouTube exceptions)');
     } else {

@@ -35,9 +35,15 @@ function loadSettings() {
   return loaded;
 }
 
+let saveSettingsTimeout = null;
 function saveSettings(settings) {
   state.settings = settings;
-  fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
+  if (saveSettingsTimeout) clearTimeout(saveSettingsTimeout);
+  saveSettingsTimeout = setTimeout(() => {
+    fs.writeFile(settingsPath, JSON.stringify(state.settings, null, 2), (err) => {
+      if (err) console.error('Failed to save settings:', err);
+    });
+  }, 500);
 }
 
 module.exports = { loadSettings, saveSettings, defaultSites };
