@@ -171,5 +171,5 @@ Built artifacts are placed in the `out/` (Forge) or `dist/` (electron-builder) d
 
 ## 📄 License
 
-This project is open-source and available under the [ISC License](ISC-License.md).  
+This project is open-source and available under the [ISC License](ISCLicense.md).  
 Copyright © 2026 [Nsamba Ali](mailto:alinsamba@outlook.com)
