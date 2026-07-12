@@ -12,6 +12,57 @@ const { saveSettings } = require('./settings');
 const { injectVolume } = require('./window');
 
 let extensionPopupWin = null;
+const extensionMetadataCache = new Map();
+const fsp = fs.promises;
+
+async function getExtensionMetadata(ext) {
+  const cacheKey = `${ext.path}@${ext.version}`;
+  if (extensionMetadataCache.has(cacheKey)) {
+    return extensionMetadataCache.get(cacheKey);
+  }
+
+  let popupPath = null;
+  let base64Icon = null;
+
+  try {
+    const manifestPath = path.join(ext.path, 'manifest.json');
+    const manifestContent = await fsp.readFile(manifestPath, 'utf8').catch(() => null);
+    if (manifestContent) {
+      const manifest = JSON.parse(manifestContent);
+      const action = manifest.action || manifest.browser_action || manifest.page_action;
+      if (action) {
+        popupPath = action.default_popup || null;
+        let iconPath = null;
+        if (action.default_icon) {
+          if (typeof action.default_icon === 'string') {
+            iconPath = action.default_icon;
+          } else if (typeof action.default_icon === 'object') {
+            const keys = Object.keys(action.default_icon).map(Number).sort((a, b) => b - a);
+            if (keys.length > 0) iconPath = action.default_icon[keys[0]];
+          }
+        }
+        if (!iconPath && manifest.icons) {
+          const keys = Object.keys(manifest.icons).map(Number).sort((a, b) => b - a);
+          if (keys.length > 0) iconPath = manifest.icons[keys[0]];
+        }
+        if (iconPath) {
+          const iconFullPath = path.join(ext.path, iconPath);
+          const buffer = await fsp.readFile(iconFullPath).catch(() => null);
+          if (buffer) {
+            const extName = path.extname(iconFullPath).replace('.', '') || 'png';
+            base64Icon = `data:image/${extName};base64,${buffer.toString('base64')}`;
+          }
+        }
+      }
+    }
+  } catch (err) {
+    console.error(`Failed to parse manifest for extension ${ext.id}:`, err);
+  }
+
+  const metadata = { popupPath, icon: base64Icon };
+  extensionMetadataCache.set(cacheKey, metadata);
+  return metadata;
+}
 
 async function extractIconUrlFromHtml(origin) {
   try {
@@ -534,54 +585,20 @@ function registerIpcHandlers() {
     };
   });
 
-  ipcMain.handle('get-loaded-extensions', () => {
-    return session.fromPartition('persist:allentapp').extensions.getAllExtensions().map(ext => {
-      let popupPath = null;
-      let base64Icon = null;
-      
-      try {
-        const manifestPath = path.join(ext.path, 'manifest.json');
-        if (fs.existsSync(manifestPath)) {
-          const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
-          const action = manifest.action || manifest.browser_action || manifest.page_action;
-          if (action) {
-            popupPath = action.default_popup || null;
-            let iconPath = null;
-            if (action.default_icon) {
-              if (typeof action.default_icon === 'string') {
-                iconPath = action.default_icon;
-              } else if (typeof action.default_icon === 'object') {
-                const keys = Object.keys(action.default_icon).map(Number).sort((a, b) => b - a);
-                if (keys.length > 0) iconPath = action.default_icon[keys[0]];
-              }
-            }
-            if (!iconPath && manifest.icons) {
-              const keys = Object.keys(manifest.icons).map(Number).sort((a, b) => b - a);
-              if (keys.length > 0) iconPath = manifest.icons[keys[0]];
-            }
-            if (iconPath) {
-              const iconFullPath = path.join(ext.path, iconPath);
-              if (fs.existsSync(iconFullPath)) {
-                const buffer = fs.readFileSync(iconFullPath);
-                const extName = path.extname(iconFullPath).replace('.', '') || 'png';
-                base64Icon = `data:image/${extName};base64,${buffer.toString('base64')}`;
-              }
-            }
-          }
-        }
-      } catch (err) {
-        console.error(`Failed to parse manifest for extension ${ext.id}:`, err);
-      }
+  ipcMain.handle('get-loaded-extensions', async () => {
+    const loadedExts = session.fromPartition('persist:allentapp').extensions.getAllExtensions();
+    return Promise.all(loadedExts.map(async ext => {
+      const metadata = await getExtensionMetadata(ext);
       
       return {
         id: ext.id,
         name: ext.name,
         version: ext.version,
         path: ext.path,
-        popupPath,
-        icon: base64Icon
+        popupPath: metadata.popupPath,
+        icon: metadata.icon
       };
-    });
+    }));
   });
 
   ipcMain.handle('open-extension-popup', async (event, { id, popupPath, anchorBounds, placement }) => {
@@ -675,19 +692,8 @@ function registerIpcHandlers() {
     const menuTemplate = [];
     
     for (const ext of loadedExts) {
-      let popupPath = null;
-      try {
-        const manifestPath = path.join(ext.path, 'manifest.json');
-        if (fs.existsSync(manifestPath)) {
-          const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
-          const action = manifest.action || manifest.browser_action || manifest.page_action;
-          if (action) {
-            popupPath = action.default_popup || null;
-          }
-        }
-      } catch (err) {
-        console.error(`Failed to parse manifest for native menu:`, err);
-      }
+      const metadata = await getExtensionMetadata(ext);
+      const popupPath = metadata.popupPath;
       
       const isPinned = pinnedExtensions.includes(ext.id);
       const submenuItems = [];
