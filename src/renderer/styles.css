@@ -1,0 +1,612 @@
+/*
+ * Author: Nsamba Ali (alinsamba@outlook.com)
+ * Copyright (c) 2026 Nsamba Ali. All rights reserved.
+ */
+:root {
+      --bg-dark: #070707;
+      --bg-sidebar: #0f0f0f;
+      --accent: #ffffff;
+      --text: #f1f1f1;
+      --text-muted: #888888;
+      --hover: #222222;
+      --border: rgba(255, 255, 255, 0.08);
+      --gradient: linear-gradient(135deg, #1db954, #8a2387, #e94057, #f27121);
+    }
+    
+    body, html {
+      margin: 0;
+      padding: 0;
+      height: 100vh;
+      width: 100vw;
+      background-color: var(--bg-dark);
+      overflow: hidden;
+      display: flex;
+      font-family: 'Inter', sans-serif;
+      color: var(--text);
+    }
+
+    #sidebar {
+      width: 68px;
+      height: 100%;
+      box-sizing: border-box;
+      background-color: var(--bg-sidebar);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding-top: 12px; 
+      -webkit-app-region: drag;
+      border-right: 1px solid var(--border);
+      box-shadow: 2px 0 10px rgba(0,0,0,0.5);
+      z-index: 10;
+    }
+
+    .icon {
+      width: 44px;
+      height: 44px;
+      margin-bottom: 16px;
+      background-color: transparent;
+      border-radius: 12px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      cursor: pointer;
+      -webkit-app-region: no-drag;
+      color: var(--text-muted);
+      transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+      position: relative;
+    }
+
+    .icon:hover {
+      background-color: var(--hover);
+      color: var(--accent);
+      transform: scale(1.05);
+    }
+
+    .icon.active {
+      color: var(--accent);
+      background-color: var(--hover);
+    }
+
+    .icon.active::before {
+      content: '';
+      position: absolute;
+      left: -12px;
+      top: 50%;
+      transform: translateY(-50%);
+      height: 20px;
+      width: 4px;
+      border-radius: 0 4px 4px 0;
+      background: var(--text);
+    }
+
+    /* Glow effect on hover */
+    .icon svg, .icon img {
+      transition: filter 0.3s ease;
+    }
+    .icon:hover svg, .icon:hover img {
+      filter: drop-shadow(0 0 8px rgba(255,255,255,0.3));
+    }
+    .icon img {
+      width: 24px;
+      height: 24px;
+      object-fit: contain;
+      border-radius: 6px;
+    }
+
+    #main-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    #titlebar {
+      height: 40px; 
+      width: 100%;
+      -webkit-app-region: drag;
+      display: flex;
+      align-items: center;
+      padding-left: 24px;
+      font-weight: 600;
+      font-size: 14px;
+      letter-spacing: 0.5px;
+      background-color: var(--bg-dark);
+      box-sizing: border-box;
+      user-select: none;
+      border-bottom: 1px solid var(--border);
+      z-index: 10;
+    }
+
+    /* Gradient Text for Title */
+    .brand-text {
+      background: var(--gradient);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      font-weight: 700;
+      font-size: 15px;
+    }
+
+    /* Settings Modal with Glassmorphism */
+    #settings-modal {
+      display: none;
+      position: absolute;
+      top: 40px;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(10, 10, 10, 0.7);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      z-index: 100;
+      padding: 40px 60px;
+      overflow-y: auto;
+      animation: fadeIn 0.3s ease-out;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .settings-btn {
+      margin-bottom: 24px;
+    }
+
+    #volume-slider-container {
+      position: absolute;
+      top: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      margin-top: 5px;
+      background: rgba(15, 15, 15, 0.95);
+      backdrop-filter: blur(10px);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 16px;
+      display: none;
+      align-items: center;
+      gap: 10px;
+      z-index: 1000;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+      /* Using the generic fadeIn to avoid overwriting translateX */
+      animation: fadeIn 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
+    }
+    
+    @keyframes slideInRight {
+      from { opacity: 0; transform: translateX(-10px); }
+      to { opacity: 1; transform: translateX(0); }
+    }
+
+    /* Premium Loader Overlay */
+    #loading-overlay {
+      position: absolute;
+      top: 40px;
+      left: 68px;
+      right: 0;
+      bottom: 0;
+      background: var(--bg-dark);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+      z-index: 50; /* Sits under settings modal but above where the WebContentsView normally sits */
+      opacity: 0;
+      transition: opacity 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+    }
+    
+    #loading-overlay.visible {
+      display: flex;
+      opacity: 1;
+    }
+    
+    .loader-container {
+      position: relative;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      width: 80px;
+      height: 80px;
+    }
+    
+    .spinner-ring {
+      width: 80px;
+      height: 80px;
+      border: 3px solid rgba(255, 255, 255, 0.05);
+      border-top: 3px solid var(--accent);
+      border-radius: 50%;
+      animation: spin 1s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+      position: absolute;
+    }
+    
+    .spinner-ring::after {
+      content: '';
+      position: absolute;
+      top: -3px;
+      left: -3px;
+      right: -3px;
+      bottom: -3px;
+      border: 3px solid transparent;
+      border-bottom: 3px solid rgba(255, 255, 255, 0.2);
+      border-radius: 50%;
+      animation: spinReverse 1.5s linear infinite;
+    }
+    
+    .loader-logo-container {
+      position: absolute;
+      width: 44px;
+      height: 44px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      border-radius: 12px;
+      overflow: hidden;
+      color: var(--accent);
+      animation: logoPulse 2s ease-in-out infinite;
+    }
+    
+    .loader-logo-container img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+
+    .loader-logo-container svg {
+      width: 32px;
+      height: 32px;
+    }
+    
+    @keyframes logoPulse {
+      0%, 100% { transform: scale(0.95); opacity: 0.8; }
+      50% { transform: scale(1.05); opacity: 1; }
+    }
+    
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    
+    @keyframes spinReverse {
+      0% { transform: rotate(360deg); }
+      100% { transform: rotate(0deg); }
+    }
+
+    .loading-text {
+      margin-top: 20px;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text-muted);
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      animation: pulse 1.5s ease-in-out infinite;
+    }
+    
+    @keyframes pulse {
+      0%, 100% { opacity: 0.4; }
+      50% { opacity: 1; }
+    }
+
+    h2 {
+      font-size: 28px;
+      margin-top: 0;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+    }
+
+    h3 {
+      font-weight: 600;
+      margin-top: 40px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 10px;
+    }
+
+    button {
+      padding: 12px 20px;
+      background-color: #ffffff;
+      color: #000000;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 600;
+      font-family: 'Inter', sans-serif;
+      transition: all 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    button:hover {
+      background-color: #e0e0e0;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(255,255,255,0.1);
+    }
+    
+    button.secondary {
+      background-color: #222;
+      color: #fff;
+      border: 1px solid var(--border);
+    }
+    button.secondary:hover {
+      background-color: #333;
+    }
+
+    ul {
+      list-style-type: none;
+      padding: 0;
+      margin-top: 20px;
+    }
+
+    li {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border);
+      margin: 8px 0;
+      padding: 12px 16px;
+      border-radius: 8px;
+      font-family: monospace;
+      font-size: 13px;
+      word-break: break-all;
+      display: flex;
+      align-items: center;
+    }
+    
+    li::before {
+      content: '🧩';
+      margin-right: 12px;
+      font-size: 16px;
+    }
+    
+    /* Switch styling */
+    .switch-container input:checked + .slider {
+      background-color: #1db954; /* Spotify green */
+    }
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 18px;
+      width: 18px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      border-radius: 50%;
+      transition: .3s;
+    }
+    .switch-container input:checked + .slider:before {
+      transform: translateX(22px);
+    }
+    
+    .titlebar-btn {
+      padding: 6px 14px;
+      font-size: 12px;
+      background-color: #1db954;
+      color: #ffffff;
+      border: none;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      -webkit-app-region: no-drag;
+      transition: all 0.2s;
+    }
+    .titlebar-btn:hover {
+      background-color: #1ed760;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(29, 185, 84, 0.3);
+    }
+    #extensions-puzzle-btn-top:hover {
+      background-color: var(--hover);
+      color: var(--accent);
+    }
+    .topbar-extension-icon {
+      width: 28px;
+      height: 28px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      border-radius: 6px;
+      cursor: pointer;
+      color: var(--text-muted);
+      transition: all 0.2s;
+      -webkit-app-region: no-drag;
+    }
+    .topbar-extension-icon:hover {
+      background-color: var(--hover);
+      color: var(--accent);
+    }
+    .titlebar-icon {
+      width: 28px;
+      height: 28px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      border-radius: 6px;
+      cursor: pointer;
+      color: var(--text-muted);
+      transition: all 0.2s;
+      -webkit-app-region: no-drag;
+      position: relative;
+    }
+    .titlebar-icon:hover, .titlebar-icon.active {
+      background-color: var(--hover);
+      color: var(--accent);
+    }
+    body.fullscreen-active #titlebar, body.fullscreen-active #sidebar {
+      display: none !important;
+    }
+
+    /* Premium Tabbed Settings Layout */
+    .settings-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 16px;
+    }
+    .settings-header h2 {
+      margin: 0;
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      background: var(--gradient);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .close-settings-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 14px;
+      font-size: 13px;
+      font-weight: 500;
+      border-radius: 8px;
+    }
+    .settings-body {
+      display: flex;
+      gap: 30px;
+      height: calc(100% - 70px);
+      min-height: 400px;
+    }
+    .settings-tabs-sidebar {
+      width: 200px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      border-right: 1px solid var(--border);
+      padding-right: 20px;
+      flex-shrink: 0;
+    }
+    .settings-tab-btn {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      text-align: left;
+      transition: all 0.2s;
+      width: 100%;
+    }
+    .settings-tab-btn svg {
+      opacity: 0.7;
+      transition: opacity 0.2s;
+    }
+    .settings-tab-btn:hover {
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--text);
+    }
+    .settings-tab-btn:hover svg {
+      opacity: 1;
+    }
+    .settings-tab-btn.active {
+      background: rgba(29, 185, 84, 0.1);
+      color: var(--accent);
+      font-weight: 600;
+    }
+    .settings-tab-btn.active svg {
+      color: var(--accent);
+      opacity: 1;
+    }
+    .settings-tab-content {
+      flex: 1;
+      overflow-y: auto;
+      padding-right: 10px;
+    }
+    .settings-tab-pane {
+      display: none;
+      animation: fadeIn 0.2s ease-out;
+    }
+    .settings-tab-pane.active {
+      display: block;
+    }
+    .settings-tab-pane h3 {
+      margin-top: 0;
+      margin-bottom: 8px;
+      font-size: 18px;
+      font-weight: 600;
+    }
+    .tab-desc {
+      color: var(--text-muted);
+      font-size: 13px;
+      line-height: 1.5;
+      margin-bottom: 20px;
+    }
+    .add-site-form, .extensions-list-container {
+      margin-top: 25px;
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 20px;
+    }
+    .add-site-form h4, .extensions-list-container h4 {
+      margin-top: 0;
+      margin-bottom: 12px;
+      font-size: 14px;
+      font-weight: 600;
+    }
+    .form-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .form-row input, .webstore-installer input {
+      flex: 1;
+      min-width: 150px;
+      padding: 10px 14px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--text);
+      font-size: 13px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .form-row input:focus, .webstore-installer input:focus {
+      border-color: var(--accent);
+    }
+    .extensions-controls {
+      display: flex;
+      gap: 15px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .webstore-installer {
+      display: flex;
+      gap: 8px;
+      flex: 1;
+      min-width: 250px;
+    }
+    .pref-card {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+    }
+    .pref-info {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .pref-info strong {
+      font-size: 14px;
+      font-weight: 600;
+    }
+    .pref-info span {
+      color: var(--text-muted);
+      font-size: 12px;
+      line-height: 1.4;
+    }
+    #fullscreen-btn.active::before {
+      display: none !important;
+    }

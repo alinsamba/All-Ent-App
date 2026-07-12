@@ -2,7 +2,7 @@
   "name": "all-ent-app",
   "version": "1.0.0",
   "description": "All Entertainment App wrapper",
-  "main": "main.js",
+  "main": "src/main.js",
   "scripts": {
     "start": "electron .",
     "dev": "electron .",
@@ -11,7 +11,7 @@
     "make": "electron-forge make"
   },
   "keywords": [],
-  "author": "",
+  "author": "Nsamba Ali <alinsamba@outlook.com>",
   "license": "ISC",
   "devDependencies": {
     "@electron-forge/cli": "^7.11.2",
@@ -26,6 +26,7 @@
   },
   "dependencies": {
     "@ghostery/adblocker-electron": "^2.18.1",
+    "adm-zip": "^0.6.0",
     "cross-fetch": "^4.1.0",
     "electron-squirrel-startup": "^1.0.1"
   }

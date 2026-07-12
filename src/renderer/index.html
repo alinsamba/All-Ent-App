@@ -1,0 +1,212 @@
+<!--
+  Author: Nsamba Ali (alinsamba@outlook.com)
+  Copyright (c) 2026 Nsamba Ali. All rights reserved.
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>All Ent App</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div id="sidebar">
+    <!-- Fullscreen Toggle Button -->
+    <div class="icon" id="fullscreen-btn" onclick="toggleFullscreen()" title="Toggle Fullscreen (F11)">
+      <svg viewBox="0 0 24 24" fill="currentColor" width="22" height="22"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>
+    </div>
+    
+    <div id="sites-container" style="display: flex; flex-direction: column; align-items: center; width: 100%;"></div>
+    
+    <!-- Bottom Group with Settings Control -->
+    <div style="margin-top: auto; display: flex; flex-direction: column; align-items: center; width: 100%;">
+      <!-- Settings Icon -->
+      <div class="icon settings-btn" onclick="toggleSettings()" title="Settings" style="margin-bottom: 16px;">
+        <svg viewBox="0 0 24 24" fill="currentColor" width="22" height="22"><path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.06-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.73,8.87 C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.06,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.43-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.49-0.12-0.61L19.14,12.94z M12,15.6c-1.99,0-3.6-1.61-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.61,3.6,3.6S13.99,15.6,12,15.6z"/></svg>
+      </div>
+    </div>
+  </div>
+  
+  <div id="main-content">
+    <!-- Loading Overlay (Visible by default on initial start) -->
+    <div id="loading-overlay" class="visible" style="display: flex; opacity: 1;">
+      <div class="loader-container">
+        <div class="spinner-ring"></div>
+        <div class="loader-logo-container" id="loader-logo-container"></div>
+      </div>
+      <div class="loading-text" id="loader-text">Loading...</div>
+    </div>
+
+    <div id="titlebar" style="display: flex; align-items: center; justify-content: space-between;">
+      <div style="display: flex; align-items: center; gap: 12px; -webkit-app-region: drag;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <img src="../../aea.png" alt="Logo" style="height: 18px; width: 18px; object-fit: contain;">
+          <span class="brand-text">All Ent App</span>
+        </div>
+        
+        <div style="width: 1px; height: 16px; background-color: var(--border); margin: 0 4px;"></div>
+        
+        <!-- Navigation Controls -->
+        <div style="display: flex; align-items: center; gap: 4px; -webkit-app-region: no-drag;">
+          <div class="titlebar-icon" onclick="navBack()" title="Back">
+            <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+          </div>
+          <div class="titlebar-icon" onclick="navForward()" title="Forward">
+            <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z"/></svg>
+          </div>
+          <div class="titlebar-icon" onclick="navReload()" title="Reload">
+            <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
+          </div>
+          <div style="width: 1px; height: 12px; background-color: var(--border); margin: 0 4px;"></div>
+          <div class="titlebar-icon" id="split-screen-btn" onclick="toggleSplitMenu(event)" title="Split Screen">
+            <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M19 4H5c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm-8 14H5V6h6v12zm8 0h-6V6h6v12z"/></svg>
+          </div>
+        </div>
+      </div>
+
+      <!-- URL Address Bar -->
+      <div id="url-bar-container" style="flex: 1; max-width: 450px; margin: 0 20px; -webkit-app-region: no-drag;">
+        <input type="text" id="url-input" placeholder="Search or enter URL" style="width: 100%; padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border); background: rgba(255,255,255,0.05); color: var(--text); font-size: 13px; outline: none; transition: border-color 0.2s;" onkeydown="handleUrlKeydown(event)">
+      </div>
+      
+      <!-- Topbar Extensions Bar -->
+      <div style="display: flex; align-items: center; gap: 10px; -webkit-app-region: no-drag;">
+        <!-- Media Controls -->
+        <div style="display: flex; align-items: center; gap: 4px;">
+          <div class="titlebar-icon" onclick="mediaPrev()" title="Previous Track">
+            <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M6 6h2v12H6zm3.5 6L18 18V6z"/></svg>
+          </div>
+          <div class="titlebar-icon" onclick="mediaPlayPause()" title="Play / Pause">
+            <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+          </div>
+          <div class="titlebar-icon" onclick="mediaNext()" title="Next Track">
+            <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
+          </div>
+          
+          <!-- Volume Control -->
+          <div class="titlebar-icon" id="volume-btn-main" onmouseenter="showVolumeSlider()" onmouseleave="hideVolumeSlider()" title="Volume">
+            <svg id="volume-icon" viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>
+            <div id="volume-slider-container" onmouseenter="clearVolumeTimeout()" onmouseleave="hideVolumeSlider()">
+              <input type="range" id="volume-slider" min="0" max="100" value="100" style="width: 100px; accent-color: var(--accent); cursor: pointer;" oninput="setAppVolume(this.value)">
+              <span id="volume-value" style="font-size: 11px; font-weight: 600; width: 30px; text-align: right; color: var(--text); font-family: monospace;">100%</span>
+            </div>
+          </div>
+        </div>
+
+        <div style="width: 1px; height: 16px; background-color: var(--border);"></div>
+        <!-- Install Extension Button (contextual) -->
+        <button id="titlebar-install-btn" class="titlebar-btn" style="display: none;" onclick="installCurrentWebstoreExtension()">
+          <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M5 20h14v-2H5v2zM19 9h-4V3H9v6H5l7 7 7-7z"/></svg>
+          Install Extension
+        </button>
+
+        <!-- Pinned Extensions Horizontal List -->
+        <div id="pinned-extensions-container-top" style="display: flex; align-items: center; gap: 8px;"></div>
+        
+        <!-- Puzzle Icon -->
+        <div id="extensions-puzzle-btn-top" onclick="toggleExtensionsMenu(event)" title="Extensions" style="display: none; width: 28px; height: 28px; justify-content: center; align-items: center; border-radius: 6px; color: var(--text-muted); cursor: pointer; transition: all 0.2s; -webkit-app-region: no-drag;">
+          <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M20.5 11H19V7c0-1.1-.9-2-2-2h-4V3.5a2.5 2.5 0 0 0-5 0V5H4c-1.1 0-2 .9-2 2v4h1.5a2.5 2.5 0 0 1 0 5H2v4c0 1.1.9 2 2 2h4v-1.5a2.5 2.5 0 0 1 5 0V21h4c1.1 0 2-.9 2-2v-4h1.5a2.5 2.5 0 0 0 0-5z"/></svg>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Settings Overlay (inside main-content so it doesn't cover sidebar) -->
+    <div id="settings-modal">
+      <div class="settings-header">
+        <h2>App Settings</h2>
+        <button class="secondary close-settings-btn" onclick="toggleSettings()">
+          <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+          Close
+        </button>
+      </div>
+      
+      <div class="settings-body">
+        <div class="settings-tabs-sidebar">
+          <button class="settings-tab-btn active" id="tab-btn-sites" onclick="switchSettingsTab('sites')">
+            <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.53c-.26-.81-1-1.4-1.9-1.4h-1v-3c0-.55-.45-1-1-1h-6v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.4z"/></svg>
+            Manage Sites
+          </button>
+          <button class="settings-tab-btn" id="tab-btn-extensions" onclick="switchSettingsTab('extensions')">
+            <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M20.5 11H19V7c0-1.1-.9-2-2-2h-4V3.5a2.5 2.5 0 0 0-5 0V5H4c-1.1 0-2 .9-2 2v4h1.5a2.5 2.5 0 0 1 0 5H2v4c0 1.1.9 2 2 2h4v-1.5a2.5 2.5 0 0 1 5 0V21h4c1.1 0 2-.9 2-2v-4h1.5a2.5 2.5 0 0 0 0-5z"/></svg>
+            Extensions
+          </button>
+          <button class="settings-tab-btn" id="tab-btn-preferences" onclick="switchSettingsTab('preferences')">
+            <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .43-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
+            Preferences
+          </button>
+        </div>
+        
+        <div class="settings-tab-content">
+          <!-- Tab 1: Sites -->
+          <div class="settings-tab-pane active" id="pane-sites">
+            <h3 id="manage-sites-heading">Manage Sites</h3>
+            <div id="manage-sites-list"></div>
+            
+            <div class="add-site-form">
+              <h4>Add New Shortcut</h4>
+              <div class="form-row">
+                <input type="text" id="new-site-name" placeholder="Site Name (e.g. GitHub)">
+                <input type="text" id="new-site-url" placeholder="URL (e.g. https://github.com)">
+                <button onclick="addSite()">Add Site</button>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Tab 2: Extensions -->
+          <div class="settings-tab-pane" id="pane-extensions">
+            <h3>Chrome Extensions</h3>
+            <p class="tab-desc">
+              Load extensions by downloading them directly from the Chrome Web Store or by selecting local unpacked directories.
+            </p>
+            
+            <div class="extensions-controls">
+              <button onclick="loadExtension()" class="primary">
+                <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+                Add Unpacked Extension
+              </button>
+      
+              <div class="webstore-installer">
+                <input type="text" id="webstore-url-input" placeholder="Chrome Web Store Link or ID (e.g. cjpalhdlnbpafiamejdnhcphjbkeiagm)">
+                <button id="webstore-install-btn" onclick="installWebstoreExtension()">
+                  <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M5 20h14v-2H5v2zM19 9h-4V3H9v6H5l7 7 7-7z"/></svg>
+                  Install
+                </button>
+              </div>
+            </div>
+            
+            <div id="webstore-status-message" style="display: none;"></div>
+            
+            <div class="extensions-list-container">
+              <h4>Installed Extensions</h4>
+              <ul id="extensions-list"></ul>
+            </div>
+          </div>
+          
+          <!-- Tab 3: Preferences -->
+          <div class="settings-tab-pane" id="pane-preferences">
+            <h3>General Preferences</h3>
+            <div class="pref-card">
+              <div class="pref-info">
+                <strong>Ad Blocker</strong>
+                <span>Enable or disable the built-in ad blocker. YouTube is automatically whitelisted to prevent video playback issues.</span>
+              </div>
+              <label class="switch-container">
+                <input type="checkbox" id="adblock-toggle" onchange="toggleAdBlocker()">
+                <span class="slider"></span>
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+
+
+
+  <script src="app.js"></script>
+</body>
+</html>

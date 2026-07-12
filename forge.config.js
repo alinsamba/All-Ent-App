@@ -4,12 +4,42 @@ const { FuseV1Options, FuseVersion } = require('@electron/fuses');
 module.exports = {
   packagerConfig: {
     asar: true,
+    icon: './aea'
   },
   rebuildConfig: {},
   makers: [
     {
       name: '@electron-forge/maker-zip',
+      platforms: ['darwin', 'win32', 'linux'],
     },
+    {
+      name: '@electron-forge/maker-deb',
+      config: {
+        options: {
+          icon: './aea.png',
+          categories: ['Network', 'WebBrowser', 'AudioVideo'],
+          description: 'All Entertainment App wrapper',
+          genericName: 'Media Wrapper',
+        }
+      }
+    },
+    {
+      name: '@electron-forge/maker-rpm',
+      config: {
+        options: {
+          icon: './aea.png',
+          categories: ['Network', 'WebBrowser', 'AudioVideo'],
+          description: 'All Entertainment App wrapper',
+        }
+      }
+    },
+    {
+      name: '@electron-forge/maker-squirrel',
+      config: {
+        name: 'all_ent_app',
+        setupIcon: './aea.ico'
+      }
+    }
   ],
   plugins: [
     {
