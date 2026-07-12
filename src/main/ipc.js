@@ -561,21 +561,30 @@ function registerIpcHandlers() {
     const pinnedExtensions = state.settings.pinnedExtensions || [];
     const menuTemplate = [];
     
-    for (const ext of loadedExts) {
+    const extDataList = await Promise.all(loadedExts.map(async (ext) => {
       let popupPath = null;
       try {
         const manifestPath = path.join(ext.path, 'manifest.json');
-        if (fs.existsSync(manifestPath)) {
-          const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
-          const action = manifest.action || manifest.browser_action || manifest.page_action;
-          if (action) {
-            popupPath = action.default_popup || null;
-          }
+        // We still need to check if the file exists safely without throwing if it doesn't
+        try {
+          await fs.promises.access(manifestPath, fs.constants.F_OK);
+        } catch (err) {
+          // File doesn't exist, safely ignore
+          return { ext, popupPath };
+        }
+        const manifestData = await fs.promises.readFile(manifestPath, 'utf8');
+        const manifest = JSON.parse(manifestData);
+        const action = manifest.action || manifest.browser_action || manifest.page_action;
+        if (action) {
+          popupPath = action.default_popup || null;
         }
       } catch (err) {
         console.error(`Failed to parse manifest for native menu:`, err);
       }
-      
+      return { ext, popupPath };
+    }));
+
+    for (const { ext, popupPath } of extDataList) {
       const isPinned = pinnedExtensions.includes(ext.id);
       const submenuItems = [];
       
