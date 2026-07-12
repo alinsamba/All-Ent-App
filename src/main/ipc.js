@@ -13,6 +13,92 @@ const { injectVolume } = require('./window');
 
 let extensionPopupWin = null;
 
+async function extractIconUrlFromHtml(origin) {
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 4000);
+    const response = await fetch(origin, {
+      signal: controller.signal,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+      }
+    });
+    clearTimeout(timeoutId);
+
+    if (response.ok) {
+      const html = await response.text();
+      const linkRegex = /<link\s+[^>]*>/gi;
+      let match;
+      const candidateIcons = [];
+
+      while ((match = linkRegex.exec(html)) !== null) {
+        const linkTag = match[0];
+        const relMatch = linkTag.match(/rel=["']([^"']*)["']/i);
+        if (relMatch) {
+          const rel = relMatch[1].toLowerCase();
+          if (rel.includes('icon') || rel.includes('apple-touch-icon')) {
+            const hrefMatch = linkTag.match(/href=["']([^"']*)["']/i);
+            if (hrefMatch) {
+              let href = hrefMatch[1];
+              let size = 0;
+              const sizesMatch = linkTag.match(/sizes=["']([^"']*)["']/i);
+              if (sizesMatch) {
+                const sizes = sizesMatch[1].toLowerCase();
+                if (sizes === 'any') {
+                  size = 999;
+                } else {
+                  const matchSz = sizes.match(/(\d+)x/);
+                  if (matchSz) size = parseInt(matchSz[1], 10);
+                }
+              }
+              let priority = rel.includes('apple-touch-icon') ? 100 + size : size;
+              candidateIcons.push({ href, priority });
+            }
+          }
+        }
+      }
+
+      if (candidateIcons.length > 0) {
+        candidateIcons.sort((a, b) => b.priority - a.priority);
+        const bestHref = candidateIcons[0].href;
+        if (bestHref.startsWith('//')) {
+          return 'https:' + bestHref;
+        } else if (bestHref.startsWith('/')) {
+          return origin + bestHref;
+        } else if (bestHref.startsWith('http://') || bestHref.startsWith('https://')) {
+          return bestHref;
+        } else {
+          return new URL(bestHref, origin).toString();
+        }
+      }
+    }
+  } catch (e) {
+    console.warn('Failed to parse site HTML for favicon:', e.message);
+  }
+  return null;
+}
+
+async function fetchImageAsBase64(url, defaultContentType, logError = false) {
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 3000);
+    const imgRes = await fetch(url, { signal: controller.signal });
+    clearTimeout(timeoutId);
+
+    if (imgRes.ok) {
+      const contentType = imgRes.headers.get('content-type') || defaultContentType;
+      const buffer = await imgRes.arrayBuffer();
+      const base64Data = Buffer.from(buffer).toString('base64');
+      return `data:${contentType};base64,${base64Data}`;
+    }
+  } catch (e) {
+    if (logError) {
+      console.warn(`Failed to fetch image from ${url}:`, e.message);
+    }
+  }
+  return null;
+}
+
 function registerIpcHandlers() {
   ipcMain.on('switch-app', (e, { url, siteId, forceNavigate }) => {
     const isNew = !state.views.has(siteId);
@@ -690,121 +776,22 @@ function registerIpcHandlers() {
       const parsedUrl = new URL(url);
       const domain = parsedUrl.hostname;
       const origin = parsedUrl.origin;
-      let iconUrl = null;
       let base64Icon = null;
 
-      try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 4000);
-        const response = await fetch(origin, {
-          signal: controller.signal,
-          headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-          }
-        });
-        clearTimeout(timeoutId);
-
-        if (response.ok) {
-          const html = await response.text();
-          const linkRegex = /<link\s+[^>]*>/gi;
-          let match;
-          const candidateIcons = [];
-
-          while ((match = linkRegex.exec(html)) !== null) {
-            const linkTag = match[0];
-            const relMatch = linkTag.match(/rel=["']([^"']*)["']/i);
-            if (relMatch) {
-              const rel = relMatch[1].toLowerCase();
-              if (rel.includes('icon') || rel.includes('apple-touch-icon')) {
-                const hrefMatch = linkTag.match(/href=["']([^"']*)["']/i);
-                if (hrefMatch) {
-                  let href = hrefMatch[1];
-                  let size = 0;
-                  const sizesMatch = linkTag.match(/sizes=["']([^"']*)["']/i);
-                  if (sizesMatch) {
-                    const sizes = sizesMatch[1].toLowerCase();
-                    if (sizes === 'any') {
-                      size = 999;
-                    } else {
-                      const matchSz = sizes.match(/(\d+)x/);
-                      if (matchSz) size = parseInt(matchSz[1], 10);
-                    }
-                  }
-                  let priority = rel.includes('apple-touch-icon') ? 100 + size : size;
-                  candidateIcons.push({ href, priority });
-                }
-              }
-            }
-          }
-
-          if (candidateIcons.length > 0) {
-            candidateIcons.sort((a, b) => b.priority - a.priority);
-            const bestHref = candidateIcons[0].href;
-            if (bestHref.startsWith('//')) {
-              iconUrl = 'https:' + bestHref;
-            } else if (bestHref.startsWith('/')) {
-              iconUrl = origin + bestHref;
-            } else if (bestHref.startsWith('http://') || bestHref.startsWith('https://')) {
-              iconUrl = bestHref;
-            } else {
-              iconUrl = new URL(bestHref, origin).toString();
-            }
-          }
-        }
-      } catch (e) {
-        console.warn('Failed to parse site HTML for favicon:', e.message);
-      }
+      const iconUrl = await extractIconUrlFromHtml(origin);
 
       if (iconUrl) {
-        try {
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 3000);
-          const imgRes = await fetch(iconUrl, { signal: controller.signal });
-          clearTimeout(timeoutId);
-
-          if (imgRes.ok) {
-            const contentType = imgRes.headers.get('content-type') || 'image/png';
-            const buffer = await imgRes.arrayBuffer();
-            const base64Data = Buffer.from(buffer).toString('base64');
-            base64Icon = `data:${contentType};base64,${base64Data}`;
-          }
-        } catch (e) {
-          console.warn(`Failed to fetch extracted favicon from ${iconUrl}:`, e.message);
-        }
+        base64Icon = await fetchImageAsBase64(iconUrl, 'image/png', true);
       }
 
       if (!base64Icon) {
-        try {
-          const fallbackUrl = `${origin}/favicon.ico`;
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 3000);
-          const imgRes = await fetch(fallbackUrl, { signal: controller.signal });
-          clearTimeout(timeoutId);
-
-          if (imgRes.ok) {
-            const contentType = imgRes.headers.get('content-type') || 'image/x-icon';
-            const buffer = await imgRes.arrayBuffer();
-            const base64Data = Buffer.from(buffer).toString('base64');
-            base64Icon = `data:${contentType};base64,${base64Data}`;
-          }
-        } catch (e) {}
+        const fallbackUrl = `${origin}/favicon.ico`;
+        base64Icon = await fetchImageAsBase64(fallbackUrl, 'image/x-icon', false);
       }
 
       if (!base64Icon) {
-        try {
-          const googleFaviconUrl = `https://www.google.com/s2/favicons?domain=${domain}&sz=128`;
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 3000);
-          const gRes = await fetch(googleFaviconUrl, { signal: controller.signal });
-          clearTimeout(timeoutId);
-
-          if (gRes.ok) {
-            const contentType = gRes.headers.get('content-type') || 'image/png';
-            const buffer = await gRes.arrayBuffer();
-            const base64Data = Buffer.from(buffer).toString('base64');
-            base64Icon = `data:${contentType};base64,${base64Data}`;
-          }
-        } catch (e) {}
+        const googleFaviconUrl = `https://www.google.com/s2/favicons?domain=${domain}&sz=128`;
+        base64Icon = await fetchImageAsBase64(googleFaviconUrl, 'image/png', false);
       }
 
       if (!base64Icon) {
