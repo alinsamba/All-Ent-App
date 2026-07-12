@@ -5,6 +5,7 @@
 const { app, BrowserWindow, WebContentsView, shell, nativeImage } = require('electron');
 const path = require('path');
 const state = require('./state');
+const { PLAY_PAUSE_SCRIPT, NEXT_SCRIPT, PREV_SCRIPT } = require('./media');
 
 function injectVolume(webContents, volume) {
   webContents.executeJavaScript(`
@@ -14,7 +15,7 @@ function injectVolume(webContents, volume) {
         const mediaElements = Array.from(document.querySelectorAll('video, audio'));
         mediaElements.forEach(media => {
           if (window.__realVolumeSet) {
-            try { window.__realVolumeSet.call(media, ${volume}); } catch (e) {}
+            try { window.__realVolumeSet.call(media, ${volume}); } catch (e) { console.warn('Failed to set initial media volume:', e.message); }
           } else {
             media.volume = ${volume};
           }
@@ -39,7 +40,7 @@ function injectVolume(webContents, volume) {
             mutation.addedNodes.forEach((node) => {
               if (node.tagName === 'VIDEO' || node.tagName === 'AUDIO') {
                 if (window.__realVolumeSet) {
-                  try { window.__realVolumeSet.call(node, window.__currentAppVolume); } catch (e) {}
+                  try { window.__realVolumeSet.call(node, window.__currentAppVolume); } catch (e) { console.warn('Failed to set volume on added media node:', e.message); }
                 } else {
                   node.volume = window.__currentAppVolume;
                 }
@@ -48,7 +49,7 @@ function injectVolume(webContents, volume) {
                 const children = node.querySelectorAll('video, audio');
                 children.forEach(c => {
                   if (window.__realVolumeSet) {
-                    try { window.__realVolumeSet.call(c, window.__currentAppVolume); } catch (e) {}
+                    try { window.__realVolumeSet.call(c, window.__currentAppVolume); } catch (e) { console.warn('Failed to set volume on added media child node:', e.message); }
                   } else {
                     c.volume = window.__currentAppVolume;
                   }
@@ -67,7 +68,7 @@ function injectVolume(webContents, volume) {
       const mediaElements = Array.from(document.querySelectorAll('video, audio'));
       mediaElements.forEach(media => {
         if (window.__realVolumeSet) {
-          try { window.__realVolumeSet.call(media, ${volume}); } catch (e) {}
+          try { window.__realVolumeSet.call(media, ${volume}); } catch (e) { console.warn('Failed to set volume on existing media node:', e.message); }
         } else {
           media.volume = ${volume};
         }
@@ -178,90 +179,21 @@ const handleShortcut = (event, input) => {
 
   // Media: Play/Pause (Ctrl + Space)
   if (controlOrMeta && input.key === ' ') {
-    event.sender.executeJavaScript(`
-      (function() {
-        function clickElement(el) {
-          if (!el) return false;
-          const clickEvent = new MouseEvent('click', { bubbles: true, cancelable: true, view: window });
-          el.dispatchEvent(clickEvent);
-          if (typeof el.click === 'function') el.click();
-          return true;
-        }
-        const playButtons = [
-          '[data-testid="control-button-playpause"]',
-          '.ytp-play-button',
-          '#play-pause-button',
-          '.play-pause-button'
-        ];
-        for (const selector of playButtons) {
-          const btn = document.querySelector(selector);
-          if (btn) { return clickElement(btn); }
-        }
-        const media = Array.from(document.querySelectorAll('video, audio'));
-        if (media.length > 0) {
-          const playing = media.find(el => !el.paused);
-          if (playing) { playing.pause(); } else { media[0].play().catch(() => {}); }
-        }
-      })()
-    `).catch(() => {});
+    event.sender.executeJavaScript(PLAY_PAUSE_SCRIPT).catch((e) => console.warn('Play/Pause injection failed:', e.message));
     event.preventDefault();
     return;
   }
 
   // Media: Next Track (Ctrl + ArrowRight)
   if (controlOrMeta && (input.key === 'ArrowRight' || input.key === 'Right')) {
-    event.sender.executeJavaScript(`
-      (function() {
-        function clickElement(el) {
-          if (!el) return false;
-          const clickEvent = new MouseEvent('click', { bubbles: true, cancelable: true, view: window });
-          el.dispatchEvent(clickEvent);
-          if (typeof el.click === 'function') el.click();
-          return true;
-        }
-        const nextButtons = [
-          '[data-testid="control-button-skip-forward"]',
-          '.ytp-next-button',
-          '#next-button',
-          '.next-button'
-        ];
-        for (const selector of nextButtons) {
-          const btn = document.querySelector(selector);
-          if (btn) { return clickElement(btn); }
-        }
-        const media = document.querySelector('video, audio');
-        if (media) { media.currentTime += 10; }
-      })()
-    `).catch(() => {});
+    event.sender.executeJavaScript(NEXT_SCRIPT).catch((e) => console.warn('Next track injection failed:', e.message));
     event.preventDefault();
     return;
   }
 
   // Media: Previous Track (Ctrl + ArrowLeft)
   if (controlOrMeta && (input.key === 'ArrowLeft' || input.key === 'Left')) {
-    event.sender.executeJavaScript(`
-      (function() {
-        function clickElement(el) {
-          if (!el) return false;
-          const clickEvent = new MouseEvent('click', { bubbles: true, cancelable: true, view: window });
-          el.dispatchEvent(clickEvent);
-          if (typeof el.click === 'function') el.click();
-          return true;
-        }
-        const prevButtons = [
-          '[data-testid="control-button-skip-back"]',
-          '.ytp-prev-button',
-          '#prev-button',
-          '.prev-button'
-        ];
-        for (const selector of prevButtons) {
-          const btn = document.querySelector(selector);
-          if (btn) { return clickElement(btn); }
-        }
-        const media = document.querySelector('video, audio');
-        if (media) { media.currentTime -= 10; }
-      })()
-    `).catch(() => {});
+    event.sender.executeJavaScript(PREV_SCRIPT).catch((e) => console.warn('Prev track injection failed:', e.message));
     event.preventDefault();
     return;
   }
@@ -293,10 +225,14 @@ function pruneViews() {
         if (state.win && state.win.contentView) {
           state.win.contentView.removeChildView(view);
         }
-      } catch (e) {}
+      } catch (e) {
+        console.warn(`Error removing child view for site ${id}:`, e.message);
+      }
       try {
         view.webContents.close();
-      } catch (e) {}
+      } catch (e) {
+        console.warn(`Error closing webContents for site ${id}:`, e.message);
+      }
       state.views.delete(id);
     }
   }
@@ -328,7 +264,9 @@ function getOrCreateSiteView(siteId, url) {
         const currentUrl = view.webContents.getURL();
         state.win.webContents.send('page-navigated', currentUrl);
       }
-    } catch (err) {}
+    } catch (err) {
+      console.warn('Error sending page-navigated event:', err.message);
+    }
   };
 
   view.webContents.on('did-navigate', sendNav);
@@ -370,7 +308,7 @@ function getOrCreateSiteView(siteId, url) {
         try {
           const siteUrl = new URL(site.url);
           const baseHost = siteUrl.hostname.replace(/^www\./, '');
-          return parsedUrl.hostname.includes(baseHost);
+          return parsedUrl.hostname === baseHost || parsedUrl.hostname.endsWith('.' + baseHost);
         } catch (e) {
           return false;
         }
@@ -440,7 +378,9 @@ const resizeView = () => {
         state.view.setBounds({ x: 68, y: 40, width: contentWidth, height: contentHeight });
       }
     }
-  } catch (e) {}
+  } catch (e) {
+    console.warn('Error resizing views:', e.message);
+  }
 };
 
 let resizeTimeout1 = null;
@@ -480,7 +420,9 @@ function switchAppView(url, siteId, forceNavigate = false) {
 
     try {
       state.win.contentView.addChildView(targetView);
-    } catch (e) {}
+    } catch (e) {
+      console.warn('Error adding child view in split mode:', e.message);
+    }
 
     const currentUrl = targetView.webContents.getURL();
     state.win.webContents.send('page-navigated', currentUrl);
@@ -492,7 +434,9 @@ function switchAppView(url, siteId, forceNavigate = false) {
       if (id !== siteId) {
         try {
           state.win.contentView.removeChildView(v);
-        } catch (e) {}
+        } catch (e) {
+          console.warn(`Error removing child view ${id} during non-split switch:`, e.message);
+        }
       }
     });
 
@@ -501,7 +445,9 @@ function switchAppView(url, siteId, forceNavigate = false) {
 
     try {
       state.win.contentView.addChildView(targetView);
-    } catch (e) {}
+    } catch (e) {
+      console.warn('Error adding child view during non-split switch:', e.message);
+    }
 
     const currentUrl = targetView.webContents.getURL();
     state.win.webContents.send('page-navigated', currentUrl);
@@ -673,6 +619,15 @@ function openBriefPopup(url) {
       sandbox: true,
       partition: 'persist:allentapp'
     }
+  });
+
+  popup.webContents.session.setPermissionRequestHandler((webContents, permission, callback) => {
+    const deniedPermissions = ['media', 'geolocation', 'notifications', 'midiSysex', 'pointerLock', 'fullscreen', 'openExternal'];
+    if (deniedPermissions.includes(permission)) {
+      console.log(`[Popup Security] Denied permission request for ${permission}`);
+      return callback(false);
+    }
+    callback(false); // Deny all other permissions by default to be safe
   });
 
   if (state.blocker) {

@@ -49,7 +49,7 @@ let currentSettings = null;
               try {
                 const siteUrl = new URL(site.url);
                 const baseHost = siteUrl.hostname.replace(/^www\./, '');
-                return parsedUrl.hostname.includes(baseHost);
+                return parsedUrl.hostname === baseHost || parsedUrl.hostname.endsWith('.' + baseHost);
               } catch(e) {
                 return false;
               }
