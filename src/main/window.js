@@ -53,19 +53,19 @@ function pauseViewPlayback(view) {
   view.webContents.executeJavaScript(`
     (function() {
       const media = document.querySelectorAll('video, audio');
-      media.forEach(m => { try { m.pause(); } catch(e) {} });
+      media.forEach(m => { try { m.pause(); } catch(e) { console.error('Error pausing media:', e); } });
       try {
         const spotifyPlayBtn = document.querySelector('[data-testid="control-button-playpause"]');
         if (spotifyPlayBtn && spotifyPlayBtn.getAttribute('aria-label') === 'Pause') {
           spotifyPlayBtn.click();
         }
-      } catch(e) {}
+      } catch(e) { console.error('Error pausing Spotify:', e); }
       try {
         const ytPlayBtn = document.querySelector('.ytp-play-button');
         if (ytPlayBtn && ytPlayBtn.getAttribute('title') && ytPlayBtn.getAttribute('title').includes('Pause')) {
           ytPlayBtn.click();
         }
-      } catch(e) {}
+      } catch(e) { console.error('Error pausing YouTube:', e); }
     })()
   `).catch(err => console.error('Error pausing playback:', err));
 }
@@ -407,11 +407,7 @@ function switchAppView(url, siteId, forceNavigate = false) {
     
     const oldLeftView = state.views.get(state.leftSiteId);
     if (oldLeftView && oldLeftView !== targetView && state.rightSiteId !== state.leftSiteId) {
-      try {
-        state.win.contentView.removeChildView(oldLeftView);
-      } catch (e) {
-        console.error('Error removing old left view:', e);
-      }
+      try { state.win.contentView.removeChildView(oldLeftView); } catch(e) { console.error('Error removing old left view:', e); }
     }
 
     state.leftSiteId = siteId;
@@ -511,7 +507,7 @@ function setSplitScreenMode(rightSiteId, enable) {
     if (rightView) {
       console.log(`[Split Screen] Pausing and unmounting right view: ${state.rightSiteId}`);
       pauseViewPlayback(rightView);
-      try { state.win.contentView.removeChildView(rightView); } catch(e) {}
+      try { state.win.contentView.removeChildView(rightView); } catch(e) { console.error('Error removing right view:', e); }
     }
 
     state.isSplitMode = false;
@@ -613,7 +609,7 @@ function openBriefPopup(url) {
   if (state.blocker) {
     try {
       state.blocker.enableBlockingInSession(popup.webContents.session);
-    } catch(e) {}
+    } catch(e) { console.error('Error enabling blocking in session:', e); }
   }
 
   popup.loadURL(url);
