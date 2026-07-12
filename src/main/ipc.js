@@ -207,7 +207,9 @@ function registerIpcHandlers() {
               state.win.contentView.removeChildView(view);
             }
             view.webContents.destroy();
-          } catch(err) {}
+          } catch(err) {
+            console.warn('Error cleaning up view:', err.message);
+          }
           state.views.delete(siteId);
           if (state.leftSiteId === siteId) state.leftSiteId = null;
           if (state.rightSiteId === siteId) state.rightSiteId = null;
@@ -503,7 +505,9 @@ function registerIpcHandlers() {
     }
 
     if (extensionPopupWin) {
-      try { extensionPopupWin.close(); } catch (e) {}
+      try { extensionPopupWin.close(); } catch (e) {
+        console.warn('Error closing extension popup win:', e.message);
+      }
       extensionPopupWin = null;
     }
 
@@ -598,7 +602,9 @@ function registerIpcHandlers() {
           click: async () => {
             const popupUrl = `chrome-extension://${ext.id}/${popupPath}`;
             if (extensionPopupWin) {
-              try { extensionPopupWin.close(); } catch (err) {}
+              try { extensionPopupWin.close(); } catch (err) {
+                console.warn('Error closing extension popup win:', err.message);
+              }
               extensionPopupWin = null;
             }
             const { BrowserWindow } = require('electron');
@@ -800,7 +806,9 @@ function registerIpcHandlers() {
             const base64Data = Buffer.from(buffer).toString('base64');
             base64Icon = `data:${contentType};base64,${base64Data}`;
           }
-        } catch (e) {}
+        } catch (e) {
+          console.warn('Failed to fetch fallback favicon:', e.message);
+        }
       }
 
       if (!base64Icon) {
@@ -817,7 +825,9 @@ function registerIpcHandlers() {
             const base64Data = Buffer.from(buffer).toString('base64');
             base64Icon = `data:${contentType};base64,${base64Data}`;
           }
-        } catch (e) {}
+        } catch (e) {
+          console.warn('Failed to fetch google favicon:', e.message);
+        }
       }
 
       if (!base64Icon) {
