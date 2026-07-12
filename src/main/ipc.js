@@ -586,9 +586,53 @@ function registerIpcHandlers() {
   });
 
   ipcMain.handle('get-loaded-extensions', async () => {
-    const loadedExts = session.fromPartition('persist:allentapp').extensions.getAllExtensions();
-    return Promise.all(loadedExts.map(async ext => {
-      const metadata = await getExtensionMetadata(ext);
+    const extensions = session.fromPartition('persist:allentapp').extensions.getAllExtensions();
+    return Promise.all(extensions.map(async ext => {
+      let popupPath = null;
+      let base64Icon = null;
+      
+      try {
+        const manifestPath = path.join(ext.path, 'manifest.json');
+        let manifestContent;
+        try {
+          manifestContent = await fs.promises.readFile(manifestPath, 'utf8');
+        } catch (e) {
+          // File might not exist, ignore
+        }
+
+        if (manifestContent) {
+          const manifest = JSON.parse(manifestContent);
+          const action = manifest.action || manifest.browser_action || manifest.page_action;
+          if (action) {
+            popupPath = action.default_popup || null;
+            let iconPath = null;
+            if (action.default_icon) {
+              if (typeof action.default_icon === 'string') {
+                iconPath = action.default_icon;
+              } else if (typeof action.default_icon === 'object') {
+                const keys = Object.keys(action.default_icon).map(Number).sort((a, b) => b - a);
+                if (keys.length > 0) iconPath = action.default_icon[keys[0]];
+              }
+            }
+            if (!iconPath && manifest.icons) {
+              const keys = Object.keys(manifest.icons).map(Number).sort((a, b) => b - a);
+              if (keys.length > 0) iconPath = manifest.icons[keys[0]];
+            }
+            if (iconPath) {
+              const iconFullPath = path.join(ext.path, iconPath);
+              try {
+                const buffer = await fs.promises.readFile(iconFullPath);
+                const extName = path.extname(iconFullPath).replace('.', '') || 'png';
+                base64Icon = `data:image/${extName};base64,${buffer.toString('base64')}`;
+              } catch (iconErr) {
+                // File might not exist or be readable, ignore
+              }
+            }
+          }
+        }
+      } catch (err) {
+        console.error(`Failed to parse manifest for extension ${ext.id}:`, err);
+      }
       
       return {
         id: ext.id,
