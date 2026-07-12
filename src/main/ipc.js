@@ -323,11 +323,29 @@ function registerIpcHandlers() {
   });
 
   ipcMain.handle('install-webstore-extension', async (event, extensionIdOrUrl) => {
-    const match = extensionIdOrUrl.trim().match(/[a-p]{32}/);
-    if (!match) {
+    let extensionId = null;
+    const trimmedInput = extensionIdOrUrl.trim();
+
+    if (/^[a-p]{32}$/.test(trimmedInput)) {
+      extensionId = trimmedInput;
+    } else {
+      try {
+        const parsedUrl = new URL(trimmedInput);
+        if (parsedUrl.hostname === 'chrome.google.com' || parsedUrl.hostname === 'chromewebstore.google.com') {
+          const match = parsedUrl.pathname.match(/\/([a-p]{32})(?:\/|$)/);
+          if (match) {
+            extensionId = match[1];
+          }
+        }
+      } catch (err) {
+        // Invalid URL, ignore
+      }
+    }
+
+    if (!extensionId) {
       return { success: false, error: 'Invalid Chrome Web Store Extension ID or URL.' };
     }
-    const extensionId = match[0];
+
     const downloadUrl = `https://clients2.google.com/service/update2/crx?response=redirect&prodversion=120.0.0.0&acceptformat=crx2,crx3&x=id%3D${extensionId}%26uc`;
     
     try {
