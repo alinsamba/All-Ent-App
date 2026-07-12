@@ -436,15 +436,23 @@ function registerIpcHandlers() {
     };
   });
 
-  ipcMain.handle('get-loaded-extensions', () => {
-    return session.fromPartition('persist:allentapp').extensions.getAllExtensions().map(ext => {
+  ipcMain.handle('get-loaded-extensions', async () => {
+    const extensions = session.fromPartition('persist:allentapp').extensions.getAllExtensions();
+    return Promise.all(extensions.map(async ext => {
       let popupPath = null;
       let base64Icon = null;
       
       try {
         const manifestPath = path.join(ext.path, 'manifest.json');
-        if (fs.existsSync(manifestPath)) {
-          const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+        let manifestContent;
+        try {
+          manifestContent = await fs.promises.readFile(manifestPath, 'utf8');
+        } catch (e) {
+          // File might not exist, ignore
+        }
+
+        if (manifestContent) {
+          const manifest = JSON.parse(manifestContent);
           const action = manifest.action || manifest.browser_action || manifest.page_action;
           if (action) {
             popupPath = action.default_popup || null;
@@ -463,10 +471,12 @@ function registerIpcHandlers() {
             }
             if (iconPath) {
               const iconFullPath = path.join(ext.path, iconPath);
-              if (fs.existsSync(iconFullPath)) {
-                const buffer = fs.readFileSync(iconFullPath);
+              try {
+                const buffer = await fs.promises.readFile(iconFullPath);
                 const extName = path.extname(iconFullPath).replace('.', '') || 'png';
                 base64Icon = `data:image/${extName};base64,${buffer.toString('base64')}`;
+              } catch (iconErr) {
+                // File might not exist or be readable, ignore
               }
             }
           }
@@ -483,7 +493,7 @@ function registerIpcHandlers() {
         popupPath,
         icon: base64Icon
       };
-    });
+    }));
   });
 
   ipcMain.handle('open-extension-popup', async (event, { id, popupPath, anchorBounds, placement }) => {
