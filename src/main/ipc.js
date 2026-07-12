@@ -241,8 +241,17 @@ function registerIpcHandlers() {
   });
 
   ipcMain.on('open-external-popup', (e, url) => {
-    const { openBriefPopup } = require('./window');
-    openBriefPopup(url);
+    try {
+      const parsedUrl = new URL(url);
+      if (['http:', 'https:'].includes(parsedUrl.protocol)) {
+        const { openBriefPopup } = require('./window');
+        openBriefPopup(parsedUrl.href);
+      } else {
+        console.warn('Blocked opening external popup with invalid protocol:', parsedUrl.protocol);
+      }
+    } catch (err) {
+      console.error('Invalid URL provided to open-external-popup:', err);
+    }
   });
 
   ipcMain.on('toggle-fullscreen', () => {
