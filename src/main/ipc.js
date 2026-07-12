@@ -365,11 +365,31 @@ function registerIpcHandlers() {
   ipcMain.on('update-settings', (e, newSettings) => {
     const oldAdBlock = state.settings.adBlockEnabled;
     
-    // Clean up views for deleted sites
+    // Clean up views for deleted sites or sites whose URLs have changed
     if (newSettings && newSettings.sites) {
-      const currentSiteIds = new Set(newSettings.sites.map(s => s.id));
+      const currentSiteMap = new Map(newSettings.sites.map(s => [s.id, s.url]));
       state.views.forEach((view, siteId) => {
-        if (!currentSiteIds.has(siteId)) {
+        const currentUrlForSite = currentSiteMap.get(siteId);
+
+        let shouldDestroy = false;
+        if (!currentUrlForSite) {
+          shouldDestroy = true; // Site was deleted
+        } else {
+          // Extract base origins to compare properly
+          try {
+            const newUrlObj = new URL(currentUrlForSite);
+            const oldUrlObj = new URL(view.webContents.getURL());
+
+            // Re-create the view if the core origin changes (e.g. they edited the site URL from youtube to spotify)
+            if (newUrlObj.origin !== oldUrlObj.origin) {
+              shouldDestroy = true;
+            }
+          } catch(e) {
+             shouldDestroy = true;
+          }
+        }
+
+        if (shouldDestroy) {
           try {
             if (state.win) {
               state.win.contentView.removeChildView(view);
@@ -892,17 +912,61 @@ function registerIpcHandlers() {
       const iconUrl = await extractIconUrlFromHtml(origin);
 
       if (iconUrl) {
-        base64Icon = await fetchImageAsBase64(iconUrl, 'image/png', true);
+        try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 3000);
+          const imgRes = await fetch(iconUrl, { signal: controller.signal });
+          clearTimeout(timeoutId);
+
+          if (imgRes.ok) {
+            const contentType = imgRes.headers.get('content-type') || 'image/png';
+            if (contentType.startsWith('image/')) {
+              const buffer = await imgRes.arrayBuffer();
+              const base64Data = Buffer.from(buffer).toString('base64');
+              base64Icon = `data:${contentType};base64,${base64Data}`;
+            }
+          }
+        } catch (e) {
+          console.warn(`Failed to fetch extracted favicon from ${iconUrl}:`, e.message);
+        }
       }
 
       if (!base64Icon) {
-        const fallbackUrl = `${origin}/favicon.ico`;
-        base64Icon = await fetchImageAsBase64(fallbackUrl, 'image/x-icon', false);
+        try {
+          const fallbackUrl = `${origin}/favicon.ico`;
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 3000);
+          const imgRes = await fetch(fallbackUrl, { signal: controller.signal });
+          clearTimeout(timeoutId);
+
+          if (imgRes.ok) {
+            const contentType = imgRes.headers.get('content-type') || 'image/x-icon';
+            if (contentType.startsWith('image/')) {
+              const buffer = await imgRes.arrayBuffer();
+              const base64Data = Buffer.from(buffer).toString('base64');
+              base64Icon = `data:${contentType};base64,${base64Data}`;
+            }
+          }
+        } catch (e) {}
       }
 
       if (!base64Icon) {
-        const googleFaviconUrl = `https://www.google.com/s2/favicons?domain=${domain}&sz=128`;
-        base64Icon = await fetchImageAsBase64(googleFaviconUrl, 'image/png', false);
+        try {
+          const googleFaviconUrl = `https://www.google.com/s2/favicons?domain=${domain}&sz=128`;
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 3000);
+          const gRes = await fetch(googleFaviconUrl, { signal: controller.signal });
+          clearTimeout(timeoutId);
+
+          if (gRes.ok) {
+            const contentType = gRes.headers.get('content-type') || 'image/png';
+            if (contentType.startsWith('image/')) {
+              const buffer = await gRes.arrayBuffer();
+              const base64Data = Buffer.from(buffer).toString('base64');
+              base64Icon = `data:${contentType};base64,${base64Data}`;
+            }
+          }
+        } catch (e) {}
       }
 
       if (!base64Icon) {

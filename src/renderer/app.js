@@ -212,21 +212,25 @@ let currentSettings = null;
       }
       
       if (currentSettings && currentSettings.sites) {
-        let updated = false;
-        for (const site of currentSettings.sites) {
+        const fetchPromises = currentSettings.sites.map(async (site) => {
           const isGeneric = site.svg && site.svg.includes('<text');
           if (isGeneric && !site.icon) {
             try {
               const iconData = await window.api.getSiteIcon(site.url);
               if (iconData && iconData.startsWith('data:')) {
                 site.icon = iconData;
-                updated = true;
+                return true;
               }
             } catch (err) {
               console.error(`Failed to background fetch icon for ${site.name}:`, err);
             }
           }
-        }
+          return false;
+        });
+
+        const results = await Promise.all(fetchPromises);
+        const updated = results.some(res => res);
+
         if (updated) {
           renderSidebar();
           await window.api.updateSettings(currentSettings);
@@ -751,12 +755,16 @@ let currentSettings = null;
       if (window.api && window.api.navReload) window.api.navReload();
     }
 
+    let volumeThrottleTimeout = null;
     function setAppVolume(value) {
       const vol = value / 100;
       document.getElementById('volume-value').textContent = value + '%';
       updateVolumeIcon(vol);
       if (window.api && window.api.setVolume) {
-        window.api.setVolume(vol);
+        if (volumeThrottleTimeout) clearTimeout(volumeThrottleTimeout);
+        volumeThrottleTimeout = setTimeout(() => {
+          window.api.setVolume(vol);
+        }, 50);
       }
     }
 

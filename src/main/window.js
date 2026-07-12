@@ -9,40 +9,56 @@ const state = require('./state');
 function injectVolume(webContents, volume) {
   webContents.executeJavaScript(`
     (function() {
-      // Find all media elements (video and audio)
-      const mediaElements = Array.from(document.querySelectorAll('video, audio'));
-      
-      // Setup a MutationObserver to observe new elements injected dynamically (like on YouTube/Spotify navigations)
-      const observer = new MutationObserver((mutations) => {
-        mutations.forEach((mutation) => {
-          mutation.addedNodes.forEach((node) => {
-            if (node.tagName === 'VIDEO' || node.tagName === 'AUDIO') {
-              node.volume = ${volume};
-              node.muted = false;
-            } else if (node.querySelectorAll) {
-              const children = node.querySelectorAll('video, audio');
-              children.forEach(c => {
-                c.volume = ${volume};
-                c.muted = false;
-              });
-            }
-          });
-        });
-      });
-      observer.observe(document.body, { childList: true, subtree: true });
-
-      // Apply to all existing media
-      mediaElements.forEach(media => {
-        media.volume = ${volume};
-        media.muted = false;
-        
-        // Block websites from changing the volume back
-        try {
-          Object.defineProperty(media, 'volume', {
-            get: function() { return ${volume}; },
+      if (!window.__volumeOverridden) {
+        window.__volumeOverridden = true;
+        const originalDescriptor = Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype, 'volume');
+        if (originalDescriptor) {
+          window.__realVolumeSet = originalDescriptor.set;
+          Object.defineProperty(HTMLMediaElement.prototype, 'volume', {
+            get: function() { return window.__currentAppVolume !== undefined ? window.__currentAppVolume : 1.0; },
             set: function(val) { console.log('Blocked site from setting volume to ' + val); }
           });
-        } catch (e) {}
+        }
+
+        // Setup a MutationObserver to observe new elements injected dynamically (like on YouTube/Spotify navigations)
+        const observer = new MutationObserver((mutations) => {
+          mutations.forEach((mutation) => {
+            mutation.addedNodes.forEach((node) => {
+              if (node.tagName === 'VIDEO' || node.tagName === 'AUDIO') {
+                if (window.__realVolumeSet) {
+                  try { window.__realVolumeSet.call(node, window.__currentAppVolume); } catch (e) {}
+                } else {
+                  node.volume = window.__currentAppVolume;
+                }
+                node.muted = false;
+              } else if (node.querySelectorAll) {
+                const children = node.querySelectorAll('video, audio');
+                children.forEach(c => {
+                  if (window.__realVolumeSet) {
+                    try { window.__realVolumeSet.call(c, window.__currentAppVolume); } catch (e) {}
+                  } else {
+                    c.volume = window.__currentAppVolume;
+                  }
+                  c.muted = false;
+                });
+              }
+            });
+          });
+        });
+        observer.observe(document.body, { childList: true, subtree: true });
+      }
+
+      window.__currentAppVolume = ${volume};
+
+      // Apply to all existing media
+      const mediaElements = Array.from(document.querySelectorAll('video, audio'));
+      mediaElements.forEach(media => {
+        if (window.__realVolumeSet) {
+          try { window.__realVolumeSet.call(media, ${volume}); } catch (e) {}
+        } else {
+          media.volume = ${volume};
+        }
+        media.muted = false;
       });
     })()
   `).catch(err => console.error('Volume inject error:', err));
@@ -379,10 +395,14 @@ const resizeView = () => {
   } catch (e) {}
 };
 
+let resizeTimeout1 = null;
+let resizeTimeout2 = null;
 const resizeViewDelayed = () => {
   resizeView();
-  setTimeout(resizeView, 50);
-  setTimeout(resizeView, 150);
+  if (resizeTimeout1) clearTimeout(resizeTimeout1);
+  if (resizeTimeout2) clearTimeout(resizeTimeout2);
+  resizeTimeout1 = setTimeout(resizeView, 50);
+  resizeTimeout2 = setTimeout(resizeView, 150);
 };
 
 function switchAppView(url, siteId, forceNavigate = false) {
