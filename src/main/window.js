@@ -444,7 +444,7 @@ function switchAppView(url, siteId, forceNavigate = false) {
   }
 
   // Sync loader overlay based on current load state of the newly active view
-  if (state.win && !state.win.isDestroyed()) {
+  if (!state.win.isDestroyed()) {
     if (targetView.webContents.isLoading()) {
       state.win.webContents.send('show-loader');
     } else {
