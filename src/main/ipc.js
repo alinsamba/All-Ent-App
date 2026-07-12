@@ -421,6 +421,21 @@ function registerIpcHandlers() {
 
   ipcMain.handle('get-settings', () => state.settings);
 
+  ipcMain.handle('get-app-info', () => {
+    return {
+      name: app.getName(),
+      version: app.getVersion(),
+      electronVersion: process.versions.electron,
+      chromeVersion: process.versions.chrome,
+      nodeVersion: process.versions.node,
+      platform: process.platform,
+      arch: process.arch,
+      author: "Nsamba Ali (alinsamba@outlook.com)",
+      license: "ISC",
+      copyright: "Copyright © 2026 Nsamba Ali. All rights reserved."
+    };
+  });
+
   ipcMain.handle('get-loaded-extensions', () => {
     return session.fromPartition('persist:allentapp').extensions.getAllExtensions().map(ext => {
       let popupPath = null;

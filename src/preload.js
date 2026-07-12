@@ -17,6 +17,7 @@ contextBridge.exposeInMainWorld('api', {
   installWebstoreExtension: (idOrUrl) => ipcRenderer.invoke('install-webstore-extension', idOrUrl),
   removeExtension: (extPath) => ipcRenderer.invoke('remove-extension', extPath),
   getSettings: () => ipcRenderer.invoke('get-settings'),
+  getAppInfo: () => ipcRenderer.invoke('get-app-info'),
   updateSettings: (settings) => ipcRenderer.send('update-settings', settings),
   onSettingsUpdated: (callback) => ipcRenderer.on('settings-updated', (e, settings) => callback(settings)),
   toggleSettingsView: (isOpen) => ipcRenderer.send('toggle-settings-view', isOpen),

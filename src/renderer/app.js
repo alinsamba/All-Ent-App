@@ -339,6 +339,26 @@ let currentSettings = null;
         if (adblockToggle) {
           adblockToggle.checked = currentSettings.adBlockEnabled !== false;
         }
+        loadAppInfo();
+      }
+    }
+
+    async function loadAppInfo() {
+      try {
+        if (window.api && window.api.getAppInfo) {
+          const info = await window.api.getAppInfo();
+          document.getElementById('about-app-name').textContent = info.name || 'All Ent App';
+          document.getElementById('about-app-version').textContent = `Version ${info.version || '1.0.0'}`;
+          document.getElementById('about-developer').textContent = info.author || '';
+          document.getElementById('about-license').textContent = `${info.license || ''} License`;
+          document.getElementById('about-copyright').textContent = info.copyright || '';
+          document.getElementById('about-electron-ver').textContent = info.electronVersion || '-';
+          document.getElementById('about-chrome-ver').textContent = info.chromeVersion || '-';
+          document.getElementById('about-node-ver').textContent = info.nodeVersion || '-';
+          document.getElementById('about-platform-ver').textContent = `${info.platform || ''} (${info.arch || ''})`;
+        }
+      } catch (err) {
+        console.error('Error loading app info:', err);
       }
     }
 
