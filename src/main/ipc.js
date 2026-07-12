@@ -403,10 +403,11 @@ function registerIpcHandlers() {
         console.error('Failed to remove extension from partition session:', errPartition);
       }
       
-      const userDataExtensionsDir = path.join(app.getPath('userData'), 'extensions');
-      if (extPath.startsWith(userDataExtensionsDir)) {
-        if (fs.existsSync(extPath)) {
-          fs.rmSync(extPath, { recursive: true, force: true });
+      const userDataExtensionsDir = path.resolve(path.join(app.getPath('userData'), 'extensions'));
+      const resolvedExtPath = path.resolve(extPath);
+      if (resolvedExtPath.startsWith(userDataExtensionsDir + path.sep)) {
+        if (fs.existsSync(resolvedExtPath)) {
+          fs.rmSync(resolvedExtPath, { recursive: true, force: true });
         }
       }
       
@@ -660,10 +661,11 @@ function registerIpcHandlers() {
             }
             session.fromPartition('persist:allentapp').extensions.removeExtension(ext.id);
             
-            const userDataExtensionsDir = path.join(app.getPath('userData'), 'extensions');
-            if (ext.path.startsWith(userDataExtensionsDir)) {
-              if (fs.existsSync(ext.path)) {
-                fs.rmSync(ext.path, { recursive: true, force: true });
+            const userDataExtensionsDir = path.resolve(path.join(app.getPath('userData'), 'extensions'));
+            const resolvedExtPath = path.resolve(ext.path);
+            if (resolvedExtPath.startsWith(userDataExtensionsDir + path.sep)) {
+              if (fs.existsSync(resolvedExtPath)) {
+                fs.rmSync(resolvedExtPath, { recursive: true, force: true });
               }
             }
             state.settings.extensions = state.settings.extensions.filter(p => p !== ext.path);
