@@ -13,6 +13,22 @@ const { injectVolume } = require('./window');
 
 let extensionPopupWin = null;
 
+async function fetchIconAsBase64(url, defaultContentType) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 3000);
+  const imgRes = await fetch(url, { signal: controller.signal });
+  clearTimeout(timeoutId);
+
+  if (imgRes.ok) {
+    const contentType = imgRes.headers.get('content-type') || defaultContentType;
+    const buffer = await imgRes.arrayBuffer();
+    const base64Data = Buffer.from(buffer).toString('base64');
+    return `data:${contentType};base64,${base64Data}`;
+  }
+
+  return null;
+}
+
 function registerIpcHandlers() {
   ipcMain.on('switch-app', (e, { url, siteId, forceNavigate }) => {
     const isNew = !state.views.has(siteId);
@@ -776,17 +792,8 @@ function registerIpcHandlers() {
 
       if (iconUrl) {
         try {
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 3000);
-          const imgRes = await fetch(iconUrl, { signal: controller.signal });
-          clearTimeout(timeoutId);
-
-          if (imgRes.ok) {
-            const contentType = imgRes.headers.get('content-type') || 'image/png';
-            const buffer = await imgRes.arrayBuffer();
-            const base64Data = Buffer.from(buffer).toString('base64');
-            base64Icon = `data:${contentType};base64,${base64Data}`;
-          }
+          const fetchedIcon = await fetchIconAsBase64(iconUrl, 'image/png');
+          if (fetchedIcon) base64Icon = fetchedIcon;
         } catch (e) {
           console.warn(`Failed to fetch extracted favicon from ${iconUrl}:`, e.message);
         }
@@ -795,39 +802,17 @@ function registerIpcHandlers() {
       if (!base64Icon) {
         try {
           const fallbackUrl = `${origin}/favicon.ico`;
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 3000);
-          const imgRes = await fetch(fallbackUrl, { signal: controller.signal });
-          clearTimeout(timeoutId);
-
-          if (imgRes.ok) {
-            const contentType = imgRes.headers.get('content-type') || 'image/x-icon';
-            const buffer = await imgRes.arrayBuffer();
-            const base64Data = Buffer.from(buffer).toString('base64');
-            base64Icon = `data:${contentType};base64,${base64Data}`;
-          }
-        } catch (e) {
-          console.warn('Failed to fetch fallback favicon:', e.message);
-        }
+          const fetchedIcon = await fetchIconAsBase64(fallbackUrl, 'image/x-icon');
+          if (fetchedIcon) base64Icon = fetchedIcon;
+        } catch (e) {}
       }
 
       if (!base64Icon) {
         try {
           const googleFaviconUrl = `https://www.google.com/s2/favicons?domain=${domain}&sz=128`;
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 3000);
-          const gRes = await fetch(googleFaviconUrl, { signal: controller.signal });
-          clearTimeout(timeoutId);
-
-          if (gRes.ok) {
-            const contentType = gRes.headers.get('content-type') || 'image/png';
-            const buffer = await gRes.arrayBuffer();
-            const base64Data = Buffer.from(buffer).toString('base64');
-            base64Icon = `data:${contentType};base64,${base64Data}`;
-          }
-        } catch (e) {
-          console.warn('Failed to fetch google favicon:', e.message);
-        }
+          const fetchedIcon = await fetchIconAsBase64(googleFaviconUrl, 'image/png');
+          if (fetchedIcon) base64Icon = fetchedIcon;
+        } catch (e) {}
       }
 
       if (!base64Icon) {
