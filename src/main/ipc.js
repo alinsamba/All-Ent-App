@@ -487,13 +487,26 @@ function registerIpcHandlers() {
   });
 
   ipcMain.handle('open-extension-popup', async (event, { id, popupPath, anchorBounds, placement }) => {
+    if (typeof id !== 'string' || typeof popupPath !== 'string') {
+      throw new Error('Invalid arguments: id and popupPath must be strings.');
+    }
+
+    let popupUrl;
+    try {
+      const url = new URL(popupPath, `chrome-extension://${id}/`);
+      if (url.protocol !== 'chrome-extension:' || url.hostname !== id) {
+        throw new Error('Invalid popup path.');
+      }
+      popupUrl = url.href;
+    } catch (e) {
+      throw new Error('Invalid popup path.');
+    }
+
     if (extensionPopupWin) {
       try { extensionPopupWin.close(); } catch (e) {}
       extensionPopupWin = null;
     }
 
-    const popupUrl = `chrome-extension://${id}/${popupPath}`;
-    
     extensionPopupWin = new BrowserWindow({
       width: 360,
       height: 480,
