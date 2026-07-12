@@ -2,108 +2,188 @@
 
 [![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](CHANGELOG.md)
 [![Changelog](https://img.shields.io/badge/changelog-view-orange.svg)](CHANGELOG.md)
+[![License](https://img.shields.io/badge/license-ISC-green.svg)](package.json)
+[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey.svg)](#-installation)
+[![Electron](https://img.shields.io/badge/built%20with-Electron-47848F.svg)](https://www.electronjs.org/)
 
-All Entertainment App is a premium, lightweight desktop media wrapper designed to isolate, organize, and enhance your favorite entertainment platforms (such as Spotify, YouTube, YouTube Music, and Genius) into a distraction-free, native-feeling desktop experience.
+> A premium, distraction-free desktop wrapper for your favourite entertainment platforms — Spotify, YouTube, YouTube Music, Genius, and more.
 
-By decoupling your media consumption from standard web browsers, All Ent App eliminates tab clutter, prevents accidental browser closures, and optimizes resource allocation.
+All Entertainment App isolates your media from the browser, eliminating tab clutter, preventing accidental closures, and giving you a native, focused media experience with powerful built-in tools.
+
+---
+
+## 📦 Downloads
+
+| Platform | Architecture | Format | Status |
+|---|---|---|---|
+| 🐧 Fedora / RHEL | x86_64 | `.rpm` | ✅ Available |
+| 🐧 Debian / Ubuntu | x86_64 | `.deb` | ✅ Available |
+| 🐧 Linux (Universal) | x86_64 | `.zip` | ✅ Available |
+| 🏠 Windows | x64 | `.exe` Installer | ✅ Available |
+| 🍎 macOS | Intel (x64) | `.zip` | ✅ Available |
+| 🍎 macOS | Apple Silicon (ARM64) | `.zip` | ✅ Available |
 
 ---
 
 ## 🚀 Key Features
 
 ### 🖥️ Split-Screen & Fullscreen Mode
-* **Native Split-Screen:** Toggle split-screen mode directly from the titlebar to run two entertainment services side-by-side (e.g., watch YouTube on the left while browsing Spotify on the right). 
-* **Sidebar Fullscreen Controls:** Features an enlarged sidebar fullscreen button (`22px` icon) at the top of the sidebar.
-* **Esc to Exit:** Exit fullscreen instantly at any time by pressing the `Escape` key.
-* **Smart Filtering:** Prevents splitting the same site.
-* **Context Preservation:** Retains active media playback on primary and secondary panels.
+Run two entertainment services side-by-side with a single click from the titlebar.
+* **Native Split-Screen:** e.g. YouTube on the left, Spotify on the right — simultaneously.
+* **Smart Filtering:** Prevents accidentally splitting the same site into both panels.
+* **Context Preservation:** Active media keeps playing when switching panels.
+* **Fullscreen Controls:** Dedicated fullscreen button in the sidebar; press `Esc` at any time to exit.
 
 ### 🧩 Native Chrome Extension Engine
-All Ent App provides robust support for Chrome extensions to customize your media wrapper:
-* **Native OS Dropdown Menu:** Clicking the puzzle icon on the top bar displays a native context menu overlay. This solves the issue of HTML overlays being obscured by the native site views.
-* **Pinning & Popup windows:** Manage extensions (pin to top bar, open custom popups, or remove) natively. Standard extension popups render in borderless sub-windows automatically anchored below your controls.
-* **Direct Web Store Installer:** Paste any Chrome Web Store link or 32-character extension ID (e.g., `cjpalhdlnbpafiamejdnhcphjbkeiagm` for uBlock Origin) to automatically download, unpack, and register the extension.
-* **Unpacked Local Extensions:** Load local custom extension directories via a native file selector.
-
-### ⏳ Automatic Loader Screens
-* **Dynamic Event-Driven Loader:** Site loading screens are now driven by real-time `did-start-loading` and `did-stop-loading` page events.
-* **Visual Transitions:** The loader automatically displays on initial loads, page navigations, or URL changes and hides smoothly once the active view is ready.
-
-### ⚙️ Redesigned Tabbed Settings Modal
-* **Premium Side-Tabbed UI:** The settings modal features a modern tabbed layout split into **Sites**, **Extensions**, and **Preferences**.
-* **Glassmorphism Design:** Restructured with smooth animations, active indicators, and glassmorphic cards.
+Full Chrome extension support without needing a browser:
+* **Native OS Dropdown Menu:** The puzzle-piece icon opens a native OS-level context menu, unobscured by web content.
+* **Pin & Popup:** Pin extensions to the top bar; popups render in auto-anchored borderless sub-windows.
+* **Web Store Installer:** Paste a Chrome Web Store URL or 32-character ID to automatically download, unpack, and register any extension (e.g. `cjpalhdlnbpafiamejdnhcphjbkeiagm` for uBlock Origin).
+* **Load Unpacked:** Load any local extension directory via a native file picker.
 
 ### 🛡️ Built-in Adblocker
-* **Ghostery Blocker Engine:** Powered by `@ghostery/adblocker-electron`.
-* **Easy Control:** Toggle the adblocker globally from the settings interface.
-* **Playback Safe:** Whitelists essential YouTube playback assets to guarantee smooth, uninterrupted streaming.
+* **Ghostery Engine:** Powered by `@ghostery/adblocker-electron` — industry-grade blocking.
+* **One-Click Toggle:** Enable or disable globally from the Settings panel.
+* **Streaming-Safe:** Custom exception rules whitelist YouTube's video delivery CDN so playback is never interrupted.
 
 ### 🎛️ Persistent App-Level Volume Control
-* **Host Override Prevention:** Uses JavaScript property descriptors (`Object.defineProperty`) on all video and audio elements, locking the media volume and preventing websites from fighting or modifying user-defined volume settings.
-* **Global Sync:** Syncs and enforces volume settings across dynamically injected page elements and navigations.
+Websites can't override your volume preference:
+* **Override Lock:** Uses `Object.defineProperty` to lock `HTMLMediaElement.volume` against site scripts.
+* **Global Sync:** Dynamically injected media elements on navigations and SPA route changes are caught and volume-locked instantly via a `MutationObserver`.
 
 ### 🎵 Universal Media Controls
-* Native play/pause, next, and previous track buttons in the titlebar. The app executes script overrides tailored for popular media players (Spotify, YouTube, YouTube Music) to control playback states globally.
+Control playback from the titlebar regardless of which service is active:
+* **Play / Pause**, **Next Track**, **Previous Track** buttons wired to platform-specific DOM selectors for Spotify, YouTube, and YouTube Music.
+* Also available as **keyboard shortcuts** (see below).
 
-### 📂 Secure Navigation and Sandbox Popups
-* To keep your media space clean, any navigation to links outside the service's base domain (such as outbound advertisements or social links) are intercepted.
-* Instead of overtaking your media frame, out-of-scope links open in a temporary sandbox popup window.
+### ⏳ Smart Loading Screens
+* Event-driven loader triggered by real Electron `did-start-loading` / `did-stop-loading` events.
+* Automatically shows on navigations and hides with a smooth fade once the page is ready.
 
-### ⚙️ Settings Persistence
-All configurations are automatically saved to `settings.json` under Electron's `userData` directory, including:
-* Custom sidebar sites and ordering.
-* Installed Chrome extensions.
-* Pinned extension settings.
-* Adblocker toggle state.
-* Global application volume level.
+### 📂 Secure Navigation & Sandbox Popups
+* Out-of-scope links (e.g. ad redirects, social share links) are intercepted before they hijack your media view.
+* Intercepted URLs open in a lightweight, sandboxed popup window, keeping your main session clean.
+
+### ⚙️ Tabbed Settings Modal
+* **Sites Tab:** Add, remove, and reorder your sidebar services; set any URL as a custom site with its own icon.
+* **Extensions Tab:** Manage all installed extensions, pin/unpin, and install new ones.
+* **Preferences Tab:** Toggle adblocker, adjust default volume, and more.
+* All settings auto-persist to `settings.json` in Electron's `userData` directory.
 
 ### 🐧 Linux Desktop Integration
-* When run on Linux, the app automatically generates a desktop entry shortcut (`all-ent-app.desktop` located in `~/.local/share/applications/`) pointing to the local executable and icon (`aea.png`), allowing you to search and launch the app like any native Linux program.
+Automatically creates a `~/.local/share/applications/all-ent-app.desktop` entry and installs the app icon to `~/.local/share/icons/` on first launch — making the app searchable in your application launcher.
+
+---
+
+## ⌨️ Keyboard Shortcuts
+
+| Shortcut | Action |
+|---|---|
+| `F11` | Toggle Fullscreen |
+| `Esc` | Exit Fullscreen |
+| `F12` / `Ctrl+Shift+I` | Toggle DevTools |
+| `F5` / `Ctrl+R` | Reload Active Page |
+| `Alt+Left` / `Ctrl+[` | Navigate Back |
+| `Alt+Right` / `Ctrl+]` | Navigate Forward |
+| `Ctrl+=` / `Ctrl++` | Zoom In |
+| `Ctrl+-` | Zoom Out |
+| `Ctrl+0` | Reset Zoom |
+| `Ctrl+Space` | Play / Pause |
+| `Ctrl+ArrowRight` | Next Track |
+| `Ctrl+ArrowLeft` | Previous Track |
 
 ---
 
 ## 🛠️ Architecture
 
-* **[src/main.js](file:///home/aria/Documents/GeniusRip/src/main.js):** App initialization, desktop entry setup, and extension bootstrap.
-* **[src/main/ipc.js](file:///home/aria/Documents/GeniusRip/src/main/ipc.js):** IPC channels managing settings, native extensions dropdown popup context menu, unpacked/webstore extension installation, extension popups, page navigation, and playback actions.
-* **[src/main/window.js](file:///home/aria/Documents/GeniusRip/src/main/window.js):** Window/view setup, layout management (single vs split-screen sizes), volume override script injections, Escape key fullscreen exit, and sandboxed popup management.
-* **[src/main/settings.js](file:///home/aria/Documents/GeniusRip/src/main/settings.js):** Default sites list configuration and file-backed persistence.
-* **[src/main/adblocker.js](file:///home/aria/Documents/GeniusRip/src/main/adblocker.js):** Custom filter lists and Ghostery engine setup.
-* **[src/preload.js](file:///home/aria/Documents/GeniusRip/src/preload.js):** Secure, isolated IPC context bridge exposing actions to the renderer.
-* **[src/renderer/](file:///home/aria/Documents/GeniusRip/src/renderer/):** Glassmorphism frontend UI (`index.html`, `styles.css`, `app.js`) styling sidebar controls, loader screens, extension lists, and site configs.
+```
+src/
+├── main.js              # App entry point — bootstraps settings, adblocker, IPC, and window
+├── preload.js           # Context bridge — securely exposes IPC API to the renderer
+├── main/
+│   ├── ipc.js           # All IPC handlers: navigation, extensions, media, settings, split-screen
+│   ├── window.js        # Window/view lifecycle, layout engine, volume injection, keyboard shortcuts
+│   ├── settings.js      # Default sites, settings load/save with file persistence
+│   ├── adblocker.js     # Ghostery engine init, YouTube exception rules
+│   └── state.js         # Shared mutable application state
+└── renderer/
+    ├── index.html       # App shell — sidebar, titlebar, loader, settings modal
+    ├── styles.css       # Glassmorphism design system, animations, dark theme
+    └── app.js           # Renderer logic — UI events, IPC calls, settings panels
+```
+
+**Key design decisions:**
+- `WebContentsView` is used (not deprecated `BrowserView` or `<webview>`) for each service panel.
+- All views share a `persist:allentapp` session partition so cookies/auth is preserved across app restarts.
+- The renderer never has Node.js access; all privileged operations go through the preload bridge.
 
 ---
 
 ## 🚀 Getting Started
 
 ### Prerequisites
-* [Node.js](https://nodejs.org/) (LTS recommended) installed on your system.
+* [Node.js](https://nodejs.org/) **LTS** (v18 or later recommended)
+* `npm` (bundled with Node.js)
+* Linux only: `dpkg` (for `.deb`) or `rpmbuild` (for `.rpm`) for packaging
 
 ### Installation
+
 1. Clone the repository:
    ```bash
    git clone https://github.com/alinsamba/GeniusRip.git
    cd GeniusRip
    ```
+
 2. Install all dependencies:
    ```bash
    npm install
    ```
 
-### Execution
-* **Launch Development Server:**
-  ```bash
-  npm run dev
-  ```
-  *(or `npm start`)*
+### Running in Development
 
-### Packaging
-Build native standalone executables for your operating system (Windows, macOS, Linux RPM/DEB):
+```bash
+npm run dev
+# or
+npm start
+```
+
+### Building for Production
+
+**Linux (`.deb` + `.rpm` + `.zip`):**
 ```bash
 npm run make
 ```
 
+**Windows (`.exe` NSIS installer, cross-built from Linux):**
+```bash
+npm run build:win
+```
+
+**Linux RPM (manual, Fedora-compatible):**
+```bash
+bash build-rpm.sh
+```
+
+Built artifacts are placed in the `out/` (Forge) or `dist/` (electron-builder) directories.
+
+---
+
+## 🔒 Security
+
+* `nodeIntegration` is disabled in all WebContentsView and popup windows.
+* `contextIsolation` and `sandbox` are enabled everywhere.
+* The preload script uses `contextBridge` — no direct `ipcRenderer` exposure.
+* All WebContentsViews use a shared, persistent session with extensions loaded at startup.
+* Out-of-scope navigations are intercepted at the `will-navigate` event level.
+* Electron security fuses are configured at package time via `@electron-forge/plugin-fuses`:
+  - `RunAsNode` → **disabled**
+  - `EnableCookieEncryption` → **enabled**
+  - `EnableEmbeddedAsarIntegrityValidation` → **enabled**
+  - `OnlyLoadAppFromAsar` → **enabled**
+
 ---
 
 ## 📄 License
-This project is open-source and available under the [ISC License](file:///home/aria/Documents/GeniusRip/package.json#L15).
+
+This project is open-source and available under the [ISC License](package.json).  
+Copyright © 2026 [Nsamba Ali](mailto:alinsamba@outlook.com)
