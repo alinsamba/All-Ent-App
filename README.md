@@ -12,19 +12,6 @@ All Entertainment App isolates your media from the browser, eliminating tab clut
 
 ---
 
-## 📦 Downloads
-
-| Platform | Architecture | Format | Status |
-|---|---|---|---|
-| 🐧 Fedora / RHEL | x86_64 | `.rpm` | ✅ Available |
-| 🐧 Debian / Ubuntu | x86_64 | `.deb` | ✅ Available |
-| 🐧 Linux (Universal) | x86_64 | `.zip` | ✅ Available |
-| 🏠 Windows | x64 | `.exe` Installer | ✅ Available |
-| 🍎 macOS | Intel (x64) | `.zip` | ✅ Available |
-| 🍎 macOS | Apple Silicon (ARM64) | `.zip` | ✅ Available |
-
----
-
 ## 🚀 Key Features
 
 ### 🖥️ Split-Screen & Fullscreen Mode
