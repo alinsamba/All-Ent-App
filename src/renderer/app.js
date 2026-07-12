@@ -221,7 +221,6 @@ let currentSettings = null;
               if (iconData && iconData.startsWith('data:')) {
                 site.icon = iconData;
                 updated = true;
-                renderSidebar();
               }
             } catch (err) {
               console.error(`Failed to background fetch icon for ${site.name}:`, err);
@@ -229,6 +228,7 @@ let currentSettings = null;
           }
         }
         if (updated) {
+          renderSidebar();
           await window.api.updateSettings(currentSettings);
           if (document.getElementById('settings-modal').style.display === 'block') {
             renderManageSites();
