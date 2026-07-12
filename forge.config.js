@@ -30,16 +30,19 @@ module.exports = {
           icon: './aea.png',
           categories: ['Network', 'WebBrowser', 'AudioVideo'],
           description: 'All Entertainment App wrapper',
+          changelog: '* Sun Jul 12 2026 Nsamba Ali <alinsamba@outlook.com> - 1.0.0\n- Initial release'
         }
       }
     },
-    {
-      name: '@electron-forge/maker-squirrel',
-      config: {
-        name: 'all_ent_app',
-        setupIcon: './aea.ico'
+    ...(process.platform === 'win32' ? [
+      {
+        name: '@electron-forge/maker-squirrel',
+        config: {
+          name: 'all_ent_app',
+          setupIcon: './aea.ico'
+        }
       }
-    }
+    ] : [])
   ],
   plugins: [
     {

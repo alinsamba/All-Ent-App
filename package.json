@@ -8,7 +8,50 @@
     "dev": "electron .",
     "test": "echo \"Error: no test specified\" && exit 1",
     "package": "electron-forge package",
-    "make": "electron-forge make"
+    "make": "electron-forge make",
+    "build:win": "electron-builder --win nsis --x64"
+  },
+  "build": {
+    "appId": "com.alinsamba.all-ent-app",
+    "productName": "All Ent App",
+    "copyright": "Copyright © 2026 Nsamba Ali",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "src/**/*",
+      "aea.png",
+      "aea.ico",
+      "package.json"
+    ],
+    "electronFuses": {
+      "runAsNode": false,
+      "enableCookieEncryption": false,
+      "enableNodeOptionsEnvironmentVariable": false,
+      "enableNodeCliInspectArguments": false,
+      "enableEmbeddedAsarIntegrityValidation": false,
+      "onlyLoadAppFromAsar": false
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "aea.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "installerIcon": "aea.ico",
+      "uninstallerIcon": "aea.ico",
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "All Ent App"
+    }
   },
   "keywords": [],
   "author": "Nsamba Ali <alinsamba@outlook.com>",
@@ -22,7 +65,8 @@
     "@electron-forge/plugin-auto-unpack-natives": "^7.11.2",
     "@electron-forge/plugin-fuses": "^7.11.2",
     "@electron/fuses": "^1.8.0",
-    "electron": "^43.1.0"
+    "electron": "^43.1.0",
+    "electron-builder": "^26.15.3"
   },
   "dependencies": {
     "@ghostery/adblocker-electron": "^2.18.1",
