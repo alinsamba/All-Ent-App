@@ -453,14 +453,10 @@ let currentSettings = null;
       
       const site = currentSettings.sites.find(s => s.id === id);
       if (site) {
-        const urlChanged = site.url !== newUrl;
-        site.name = newName;
-        site.url = newUrl;
-        
         const firstLetter = newName.charAt(0).toUpperCase();
         site.svg = `<svg viewBox="0 0 24 24" fill="currentColor" width="22" height="22"><rect width="24" height="24" rx="4" fill="currentColor" fill-opacity="0.1"/><text x="50%" y="52%" dominant-baseline="central" text-anchor="middle" font-weight="800" font-size="18" fill="currentColor">${firstLetter}</text></svg>`;
         
-        if (urlChanged) {
+        if (site.url !== newUrl) {
           try {
             const result = await window.api.getSiteIcon(newUrl);
             if (result && result.startsWith('data:')) {
@@ -473,6 +469,9 @@ let currentSettings = null;
             site.icon = null;
           }
         }
+
+        site.name = newName;
+        site.url = newUrl;
       }
       
       editingSiteId = null;
