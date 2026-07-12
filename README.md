@@ -3,7 +3,6 @@
 [![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](CHANGELOG.md)
 [![Changelog](https://img.shields.io/badge/changelog-view-orange.svg)](CHANGELOG.md)
 [![License](https://img.shields.io/badge/license-ISC-green.svg)](package.json)
-[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey.svg)](#-installation)
 [![Electron](https://img.shields.io/badge/built%20with-Electron-47848F.svg)](https://www.electronjs.org/)
 
 > A premium, distraction-free desktop wrapper for your favourite entertainment platforms — Spotify, YouTube, YouTube Music, Genius, and more.
