@@ -12,8 +12,8 @@ jest.mock('fs', () => ({
 }));
 
 const fs = require('fs');
-const { loadSettings, defaultSites } = require('../src/main/settings');
 const state = require('../src/main/state');
+const { loadSettings, defaultSites } = require('../src/main/settings');
 
 describe('loadSettings', () => {
   beforeEach(() => {
@@ -21,13 +21,18 @@ describe('loadSettings', () => {
   });
 
   it('should catch JSON parsing errors and use default settings', async () => {
-    fs.promises.access.mockResolvedValue();
-    fs.promises.readFile.mockResolvedValue('{ malformed json }');
+    // Arrange
+    fs.promises = {
+      access: jest.fn().mockResolvedValue(undefined),
+      readFile: jest.fn().mockResolvedValue('{ malformed json }')
+    };
 
     const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
 
+    // Act
     const loaded = await loadSettings();
 
+    // Assert
     expect(fs.promises.access).toHaveBeenCalledWith(expect.stringContaining('settings.json'));
     expect(fs.promises.readFile).toHaveBeenCalledWith(expect.stringContaining('settings.json'), 'utf8');
 
@@ -42,6 +47,8 @@ describe('loadSettings', () => {
       adBlockEnabled: true,
       pinnedExtensions: [],
       volume: 1.0,
+      adblockRules: [],
+      theme: 'pitch-black'
     });
 
     expect(state.settings).toEqual(loaded);

@@ -12,7 +12,9 @@ contextBridge.exposeInMainWorld('api', {
   showSplitMenu: (bounds) => ipcRenderer.send('show-split-menu', bounds),
   onSplitStateChanged: (callback) => ipcRenderer.on('split-state-changed', (e, state) => callback(state)),
   toggleFullscreen: () => ipcRenderer.send('toggle-fullscreen'),
+  togglePIP: () => ipcRenderer.send('toggle-pip'),
   onFullscreenChanged: (callback) => ipcRenderer.on('fullscreen-changed', (e, state) => callback(state)),
+  onPIPChanged: (callback) => ipcRenderer.on('pip-changed', (e, isPIP) => callback(isPIP)),
   loadExtension: () => ipcRenderer.invoke('load-extension'),
   installWebstoreExtension: (idOrUrl) => ipcRenderer.invoke('install-webstore-extension', idOrUrl),
   removeExtension: (extPath) => ipcRenderer.invoke('remove-extension', extPath),
@@ -34,5 +36,6 @@ contextBridge.exposeInMainWorld('api', {
   openExtensionPopup: (id, popupPath, anchorBounds, placement) => ipcRenderer.invoke('open-extension-popup', { id, popupPath, anchorBounds, placement }),
   showExtensionsMenu: (bounds) => ipcRenderer.send('show-extensions-menu', bounds),
   onShowLoader: (callback) => ipcRenderer.on('show-loader', () => callback()),
-  onHideLoader: (callback) => ipcRenderer.on('hide-loader', () => callback())
+  onHideLoader: (callback) => ipcRenderer.on('hide-loader', () => callback()),
+  onThemeChanged: (callback) => ipcRenderer.on('theme-changed', (e, theme) => callback(theme))
 });

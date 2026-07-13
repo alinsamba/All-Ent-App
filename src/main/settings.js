@@ -16,7 +16,7 @@ const defaultSites = [
 ];
 
 async function loadSettings() {
-  let loaded = { extensions: [], sites: defaultSites, adBlockEnabled: true, pinnedExtensions: [], volume: 1.0 };
+  let loaded = { extensions: [], sites: defaultSites, adBlockEnabled: true, pinnedExtensions: [], volume: 1.0, adblockRules: [], theme: 'pitch-black' };
   try {
     try {
       await fs.promises.access(settingsPath);
@@ -27,8 +27,10 @@ async function loadSettings() {
       if (parsed.adBlockEnabled !== undefined) loaded.adBlockEnabled = parsed.adBlockEnabled;
       if (parsed.pinnedExtensions) loaded.pinnedExtensions = parsed.pinnedExtensions;
       if (parsed.volume !== undefined) loaded.volume = parsed.volume;
-    } catch (err) {
-      if (err.code !== 'ENOENT') throw err;
+      if (parsed.adblockRules !== undefined) loaded.adblockRules = parsed.adblockRules;
+      if (parsed.theme !== undefined) loaded.theme = parsed.theme;
+    } catch (e) {
+      if (e.code !== 'ENOENT') throw e;
     }
   } catch(e) {
     console.error('Error loading settings', e);
@@ -39,21 +41,9 @@ async function loadSettings() {
   return loaded;
 }
 
-let saveSettingsTimeout = null;
 async function saveSettings(settings) {
   state.settings = settings;
-  if (saveSettingsTimeout) clearTimeout(saveSettingsTimeout);
-
-  return new Promise((resolve) => {
-    saveSettingsTimeout = setTimeout(async () => {
-      try {
-        await fs.promises.writeFile(settingsPath, JSON.stringify(state.settings, null, 2));
-      } catch (err) {
-        console.error('Failed to save settings:', err);
-      }
-      resolve();
-    }, 500);
-  });
+  await fs.promises.writeFile(settingsPath, JSON.stringify(settings, null, 2));
 }
 
 module.exports = { loadSettings, saveSettings, defaultSites };

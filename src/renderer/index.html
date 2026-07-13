@@ -30,6 +30,12 @@
   </div>
   
   <div id="main-content">
+    <div id="pip-overlay" style="display: none; position: absolute; top: 0; left: 0; right: 0; height: 30px; -webkit-app-region: drag; z-index: 9999; background: transparent; flex-direction: row; justify-content: flex-end; padding: 4px;">
+      <div class="titlebar-icon" onclick="togglePIP()" title="Exit PIP" style="-webkit-app-region: no-drag; background: rgba(0,0,0,0.5); border-radius: 4px; padding: 4px;">
+        <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M19 11h-8v6h8v-6zm4 8V4.98C23 3.88 22.1 3 21 3H3c-1.1 0-2 .88-2 1.98V19c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2zm-2 .02H3V4.97h18v14.05z"/></svg>
+      </div>
+    </div>
+
     <!-- Loading Overlay (Visible by default on initial start) -->
     <div id="loading-overlay" class="visible" style="display: flex; opacity: 1;">
       <div class="loader-container">
@@ -62,6 +68,9 @@
           <div style="width: 1px; height: 12px; background-color: var(--border); margin: 0 4px;"></div>
           <div class="titlebar-icon" id="split-screen-btn" onclick="toggleSplitMenu(event)" title="Split Screen">
             <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M19 4H5c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm-8 14H5V6h6v12zm8 0h-6V6h6v12z"/></svg>
+          </div>
+          <div class="titlebar-icon" id="pip-btn" onclick="togglePIP()" title="Mini Player (Picture-in-Picture)">
+            <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M19 11h-8v6h8v-6zm4 8V4.98C23 3.88 22.1 3 21 3H3c-1.1 0-2 .88-2 1.98V19c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2zm-2 .02H3V4.97h18v14.05z"/></svg>
           </div>
         </div>
       </div>
@@ -200,6 +209,24 @@
                 <input type="checkbox" id="adblock-toggle" onchange="toggleAdBlocker()">
                 <span class="slider"></span>
               </label>
+            </div>
+            <div class="pref-card" style="margin-top: 16px;">
+              <div class="pref-info" style="width: 100%;">
+                <strong>Custom Adblock Rules</strong>
+                <span>Enter custom filters or whitelisted domains (one per line). Example: <code>@@||example.com^</code> to whitelist.</span>
+                <textarea id="adblock-rules-input" rows="4" style="width: 100%; margin-top: 8px; padding: 8px; border-radius: 6px; border: 1px solid var(--border); background: rgba(255,255,255,0.05); color: var(--text); font-family: monospace; resize: vertical; box-sizing: border-box;" placeholder="@@||example.com^" onchange="saveAdblockRules()"></textarea>
+              </div>
+            </div>
+            <div class="pref-card" style="margin-top: 16px;">
+              <div class="pref-info" style="width: 100%;">
+                <strong>Application Theme</strong>
+                <span>Select a native window theme profile (applies vibrancy and materials on supported operating systems).</span>
+                <select id="theme-select" onchange="changeTheme()" style="width: 100%; margin-top: 8px; padding: 8px; border-radius: 6px; border: 1px solid var(--border); background: rgba(255,255,255,0.05); color: var(--text);">
+                  <option value="pitch-black">AMOLED Pitch Black</option>
+                  <option value="glassmorphic">Glassmorphic Deep Purple</option>
+                  <option value="soft-light">Soft Light Glass</option>
+                </select>
+              </div>
             </div>
           </div>
           

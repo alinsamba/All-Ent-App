@@ -10,7 +10,7 @@ const AdmZip = require('adm-zip');
 const state = require('./state');
 const { saveSettings } = require('./settings');
 const { injectVolume } = require('./window');
-const { PLAY_PAUSE_SCRIPT, NEXT_SCRIPT, PREV_SCRIPT } = require('./media');
+const mediaControl = require('./media');
 
 let extensionPopupWin = null;
 const extensionMetadataCache = new Map();
@@ -224,23 +224,38 @@ function registerIpcHandlers() {
 
   ipcMain.on('media-play-pause', () => {
     if (!state.view) return;
-    state.view.webContents.executeJavaScript(PLAY_PAUSE_SCRIPT).catch(err => console.error('Media play/pause error:', err));
+    state.view.webContents.sendInputEvent({ type: 'keyDown', keyCode: 'MediaPlayPause' });
+    state.view.webContents.sendInputEvent({ type: 'keyUp', keyCode: 'MediaPlayPause' });
+    setTimeout(() => {
+      state.view.webContents.executeJavaScript(mediaControl.playPause())
+        .catch(err => console.error('Media play/pause error:', err));
+    }, 50);
   });
 
   ipcMain.on('media-next', () => {
     if (!state.view) return;
-    state.view.webContents.executeJavaScript(NEXT_SCRIPT).catch(err => console.error('Media next error:', err));
+    state.view.webContents.sendInputEvent({ type: 'keyDown', keyCode: 'MediaNextTrack' });
+    state.view.webContents.sendInputEvent({ type: 'keyUp', keyCode: 'MediaNextTrack' });
+    setTimeout(() => {
+      state.view.webContents.executeJavaScript(mediaControl.nextTrack())
+        .catch(err => console.error('Media next error:', err));
+    }, 50);
   });
 
   ipcMain.on('media-prev', () => {
     if (!state.view) return;
-    state.view.webContents.executeJavaScript(PREV_SCRIPT).catch(err => console.error('Media prev error:', err));
+    state.view.webContents.sendInputEvent({ type: 'keyDown', keyCode: 'MediaPreviousTrack' });
+    state.view.webContents.sendInputEvent({ type: 'keyUp', keyCode: 'MediaPreviousTrack' });
+    setTimeout(() => {
+      state.view.webContents.executeJavaScript(mediaControl.prevTrack())
+        .catch(err => console.error('Media prev error:', err));
+    }, 50);
   });
 
-  ipcMain.on('set-volume', (e, vol) => {
+  ipcMain.on('set-volume', async (e, vol) => {
     state.appVolume = vol;
     state.settings.volume = vol;
-    saveSettings(state.settings);
+    await saveSettings(state.settings);
     if (!state.view) return;
     injectVolume(state.view.webContents, state.appVolume);
   });
@@ -307,10 +322,20 @@ function registerIpcHandlers() {
       });
     }
 
+    const oldTheme = state.settings.theme;
     state.settings = newSettings;
-    saveSettings(state.settings);
+    saveSettings(state.settings).catch(console.error);
     
+    if (state.settings.theme !== oldTheme && state.win) {
+      const { applyTheme } = require('./window');
+      applyTheme(state.win, state.settings.theme);
+      state.win.webContents.send('theme-changed', state.settings.theme);
+    }
+
     if (state.blocker) {
+      const { applyAdblockRules } = require('./adblocker');
+      if (applyAdblockRules) applyAdblockRules();
+
       const shouldEnable = state.settings.adBlockEnabled !== false;
       const wasEnabled = oldAdBlock !== false;
       const persistSession = session.fromPartition('persist:allentapp');
@@ -348,6 +373,11 @@ function registerIpcHandlers() {
   ipcMain.on('toggle-fullscreen', () => {
     const { toggleFullscreen } = require('./window');
     toggleFullscreen();
+  });
+
+  ipcMain.on('toggle-pip', () => {
+    const { togglePIP } = require('./window');
+    togglePIP();
   });
 
   ipcMain.handle('get-split-state', () => {
@@ -411,7 +441,7 @@ function registerIpcHandlers() {
         }
         if (!state.settings.extensions.includes(extPath)) {
           state.settings.extensions.push(extPath);
-          saveSettings(state.settings);
+          saveSettings(state.settings).catch(console.error);
         }
         return extPath;
       } catch (err) {
@@ -462,17 +492,38 @@ function registerIpcHandlers() {
       }
       
       const version = buffer.readUInt32LE(4);
-      if (version !== 3) {
+
+      let zipStartOffset = 0;
+
+      if (version === 2) {
+        const publicKeyLength = buffer.readUInt32LE(8);
+        const signatureLength = buffer.readUInt32LE(12);
+        zipStartOffset = 16 + publicKeyLength + signatureLength;
+
+        if (publicKeyLength === 0 || signatureLength === 0) {
+           return { success: false, error: 'CRX cryptographic signature components missing' };
+        }
+      } else if (version === 3) {
+        const headerLength = buffer.readUInt32LE(8);
+        zipStartOffset = 12 + headerLength;
+
+        if (headerLength === 0) {
+           return { success: false, error: 'CRX cryptographic header missing' };
+        }
+      } else {
         return { success: false, error: `Unsupported CRX version: ${version}` };
       }
-      
-      const headerLength = buffer.readUInt32LE(8);
-      const zipStartOffset = 12 + headerLength;
+
       if (zipStartOffset >= buffer.length) {
-        return { success: false, error: 'Invalid Chrome extension package' };
+        return { success: false, error: 'Invalid Chrome extension package (zip offset out of bounds)' };
       }
       
       const zipBuffer = buffer.subarray(zipStartOffset);
+
+      // Basic PKZIP signature check (0x04034b50 in Little Endian)
+      if (zipBuffer.length < 4 || zipBuffer.readUInt32LE(0) !== 0x04034b50) {
+         return { success: false, error: 'Corrupted Chrome extension package (invalid zip signature)' };
+      }
       const extensionsBaseDir = path.join(app.getPath('userData'), 'extensions');
       const extensionsDir = path.join(extensionsBaseDir, extensionId);
       
@@ -494,7 +545,7 @@ function registerIpcHandlers() {
       
       if (!state.settings.extensions.includes(extensionsDir)) {
         state.settings.extensions.push(extensionsDir);
-        saveSettings(state.settings);
+        saveSettings(state.settings).catch(console.error);
       }
       
       return { success: true, path: extensionsDir, id: extensionId, name: extensionName };
@@ -530,7 +581,7 @@ function registerIpcHandlers() {
       }
       
       state.settings.extensions = state.settings.extensions.filter(p => p !== extPath);
-      saveSettings(state.settings);
+      saveSettings(state.settings).catch(console.error);
       return true;
     } catch (err) {
       console.error('Failed to remove extension:', err);
@@ -734,7 +785,7 @@ function registerIpcHandlers() {
           } else {
             state.settings.pinnedExtensions.push(ext.id);
           }
-          saveSettings(state.settings);
+          saveSettings(state.settings).catch(console.error);
           state.win.webContents.send('settings-updated', state.settings);
         }
       });
@@ -758,7 +809,7 @@ function registerIpcHandlers() {
               }
             }
             state.settings.extensions = state.settings.extensions.filter(p => p !== ext.path);
-            saveSettings(state.settings);
+            saveSettings(state.settings).catch(console.error);
             state.win.webContents.send('settings-updated', state.settings);
           } catch (err) {
             console.error('Failed to remove extension via menu:', err);

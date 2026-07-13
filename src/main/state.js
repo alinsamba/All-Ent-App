@@ -13,5 +13,7 @@ module.exports = {
   isSplitMode: false,
   leftSiteId: null,
   rightSiteId: null,
-  isFullscreen: false
+  isFullscreen: false,
+  isPIP: false,
+  prePIPBounds: null
 };
