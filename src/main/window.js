@@ -5,6 +5,7 @@
 const { app, BrowserWindow, WebContentsView, shell, nativeImage } = require('electron');
 const path = require('path');
 const state = require('./state');
+const mediaControl = require('./media');
 
 function injectVolume(webContents, volume) {
   webContents.executeJavaScript(`
@@ -50,24 +51,8 @@ function injectVolume(webContents, volume) {
 
 function pauseViewPlayback(view) {
   if (!view) return;
-  view.webContents.executeJavaScript(`
-    (function() {
-      const media = document.querySelectorAll('video, audio');
-      media.forEach(m => { try { m.pause(); } catch(e) { console.error('Error pausing media:', e); } });
-      try {
-        const spotifyPlayBtn = document.querySelector('[data-testid="control-button-playpause"]');
-        if (spotifyPlayBtn && spotifyPlayBtn.getAttribute('aria-label') === 'Pause') {
-          spotifyPlayBtn.click();
-        }
-      } catch(e) { console.error('Error pausing Spotify:', e); }
-      try {
-        const ytPlayBtn = document.querySelector('.ytp-play-button');
-        if (ytPlayBtn && ytPlayBtn.getAttribute('title') && ytPlayBtn.getAttribute('title').includes('Pause')) {
-          ytPlayBtn.click();
-        }
-      } catch(e) { console.error('Error pausing YouTube:', e); }
-    })()
-  `).catch(err => console.error('Error pausing playback:', err));
+  view.webContents.executeJavaScript(mediaControl.pausePlayback())
+    .catch(err => console.error('Error pausing playback:', err));
 }
 
 // Global shortcut handler for WebContentsViews
@@ -149,90 +134,21 @@ const handleShortcut = (event, input) => {
 
   // Media: Play/Pause (Ctrl + Space)
   if (controlOrMeta && input.key === ' ') {
-    event.sender.executeJavaScript(`
-      (function() {
-        function clickElement(el) {
-          if (!el) return false;
-          const clickEvent = new MouseEvent('click', { bubbles: true, cancelable: true, view: window });
-          el.dispatchEvent(clickEvent);
-          if (typeof el.click === 'function') el.click();
-          return true;
-        }
-        const playButtons = [
-          '[data-testid="control-button-playpause"]',
-          '.ytp-play-button',
-          '#play-pause-button',
-          '.play-pause-button'
-        ];
-        for (const selector of playButtons) {
-          const btn = document.querySelector(selector);
-          if (btn) { return clickElement(btn); }
-        }
-        const media = Array.from(document.querySelectorAll('video, audio'));
-        if (media.length > 0) {
-          const playing = media.find(el => !el.paused);
-          if (playing) { playing.pause(); } else { media[0].play().catch(() => {}); }
-        }
-      })()
-    `).catch(() => {});
+    event.sender.executeJavaScript(mediaControl.playPause()).catch(() => {});
     event.preventDefault();
     return;
   }
 
   // Media: Next Track (Ctrl + ArrowRight)
   if (controlOrMeta && (input.key === 'ArrowRight' || input.key === 'Right')) {
-    event.sender.executeJavaScript(`
-      (function() {
-        function clickElement(el) {
-          if (!el) return false;
-          const clickEvent = new MouseEvent('click', { bubbles: true, cancelable: true, view: window });
-          el.dispatchEvent(clickEvent);
-          if (typeof el.click === 'function') el.click();
-          return true;
-        }
-        const nextButtons = [
-          '[data-testid="control-button-skip-forward"]',
-          '.ytp-next-button',
-          '#next-button',
-          '.next-button'
-        ];
-        for (const selector of nextButtons) {
-          const btn = document.querySelector(selector);
-          if (btn) { return clickElement(btn); }
-        }
-        const media = document.querySelector('video, audio');
-        if (media) { media.currentTime += 10; }
-      })()
-    `).catch(() => {});
+    event.sender.executeJavaScript(mediaControl.nextTrack()).catch(() => {});
     event.preventDefault();
     return;
   }
 
   // Media: Previous Track (Ctrl + ArrowLeft)
   if (controlOrMeta && (input.key === 'ArrowLeft' || input.key === 'Left')) {
-    event.sender.executeJavaScript(`
-      (function() {
-        function clickElement(el) {
-          if (!el) return false;
-          const clickEvent = new MouseEvent('click', { bubbles: true, cancelable: true, view: window });
-          el.dispatchEvent(clickEvent);
-          if (typeof el.click === 'function') el.click();
-          return true;
-        }
-        const prevButtons = [
-          '[data-testid="control-button-skip-back"]',
-          '.ytp-prev-button',
-          '#prev-button',
-          '.prev-button'
-        ];
-        for (const selector of prevButtons) {
-          const btn = document.querySelector(selector);
-          if (btn) { return clickElement(btn); }
-        }
-        const media = document.querySelector('video, audio');
-        if (media) { media.currentTime -= 10; }
-      })()
-    `).catch(() => {});
+    event.sender.executeJavaScript(mediaControl.prevTrack()).catch(() => {});
     event.preventDefault();
     return;
   }
@@ -342,7 +258,17 @@ const resizeView = () => {
   try {
     const { width, height } = state.win.contentView.getBounds();
 
-    if (state.isFullscreen) {
+    if (state.isPIP) {
+      if (state.isSplitMode) {
+        const leftView = state.views.get(state.leftSiteId);
+        const rightView = state.views.get(state.rightSiteId);
+        const halfWidth = Math.floor(width / 2);
+        if (leftView) leftView.setBounds({ x: 0, y: 30, width: halfWidth, height: height - 30 });
+        if (rightView) rightView.setBounds({ x: halfWidth, y: 30, width: width - halfWidth, height: height - 30 });
+      } else if (state.view) {
+        state.view.setBounds({ x: 0, y: 30, width: width, height: height - 30 });
+      }
+    } else if (state.isFullscreen) {
       if (state.isSplitMode) {
         const leftView = state.views.get(state.leftSiteId);
         const rightView = state.views.get(state.rightSiteId);
@@ -517,19 +443,38 @@ function setSplitScreenMode(rightSiteId, enable) {
   }
 }
 
+function applyTheme(win, theme) {
+  if (!win) return;
+  if (theme === 'glassmorphic') {
+    win.setBackgroundColor('#00000000');
+    win.setVibrancy('fullscreen-ui');
+    win.setBackgroundMaterial('acrylic');
+    win.setTitleBarOverlay({ color: '#00000000', symbolColor: '#ffffff', height: 40 });
+  } else if (theme === 'soft-light') {
+    win.setBackgroundColor('#00000000');
+    win.setVibrancy('titlebar');
+    win.setBackgroundMaterial('mica');
+    win.setTitleBarOverlay({ color: '#00000000', symbolColor: '#000000', height: 40 });
+  } else {
+    // pitch-black (default)
+    win.setBackgroundColor('#070707');
+    win.setVibrancy(null);
+    win.setBackgroundMaterial('none');
+    win.setTitleBarOverlay({ color: '#070707', symbolColor: '#ffffff', height: 40 });
+  }
+}
+
 function createWindow() {
+  const theme = state.settings && state.settings.theme ? state.settings.theme : 'pitch-black';
+  const initialBgColor = theme === 'pitch-black' ? '#070707' : '#00000000';
+
   state.win = new BrowserWindow({
     width: 1280,
     height: 800,
-    backgroundColor: '#070707',
+    backgroundColor: initialBgColor,
     show: false,
     titleBarStyle: 'hidden',
     icon: nativeImage.createFromPath(path.join(__dirname, '..', '..', 'aea.png')),
-    titleBarOverlay: {
-      color: '#070707',
-      symbolColor: '#ffffff',
-      height: 40
-    },
     autoHideMenuBar: true,
     webPreferences: {
       nodeIntegration: false,
@@ -538,6 +483,8 @@ function createWindow() {
       preload: path.join(__dirname, '..', 'preload.js')
     }
   });
+
+  applyTheme(state.win, theme);
 
   state.win.once('ready-to-show', () => {
     state.win.show();
@@ -589,6 +536,29 @@ function toggleFullscreen() {
   state.win.setFullScreen(!state.win.isFullScreen());
 }
 
+function togglePIP() {
+  if (!state.win) return;
+
+  if (state.isPIP) {
+    // Restore
+    state.isPIP = false;
+    state.win.setAlwaysOnTop(false);
+    if (state.prePIPBounds) {
+      state.win.setBounds(state.prePIPBounds);
+    }
+    resizeViewDelayed();
+    state.win.webContents.send('pip-changed', false);
+  } else {
+    // Enter PIP
+    state.isPIP = true;
+    state.prePIPBounds = state.win.getBounds();
+    state.win.setAlwaysOnTop(true, 'floating');
+    state.win.setSize(400, 225);
+    resizeViewDelayed();
+    state.win.webContents.send('pip-changed', true);
+  }
+}
+
 function openBriefPopup(url) {
   const { BrowserWindow } = require('electron');
   const popup = new BrowserWindow({
@@ -616,4 +586,4 @@ function openBriefPopup(url) {
   popup.setMenu(null);
 }
 
-module.exports = { createWindow, injectVolume, switchAppView, setSplitScreenMode, pauseViewPlayback, openBriefPopup, toggleFullscreen };
+module.exports = { createWindow, injectVolume, switchAppView, setSplitScreenMode, pauseViewPlayback, openBriefPopup, toggleFullscreen, togglePIP, applyTheme };

@@ -177,6 +177,14 @@ let currentSettings = null;
 
     async function initApp() {
       currentSettings = await window.api.getSettings();
+      if (currentSettings && currentSettings.theme) {
+        document.documentElement.setAttribute('data-theme', currentSettings.theme);
+      }
+      if (window.api && window.api.onThemeChanged) {
+        window.api.onThemeChanged((theme) => {
+          document.documentElement.setAttribute('data-theme', theme);
+        });
+      }
       
       // Dynamic titlebar padding depending on OS to fit system window controls cleanly
       const isMac = navigator.userAgent.includes('Mac');
@@ -256,6 +264,14 @@ let currentSettings = null;
         div.id = site.id;
         div.title = site.name;
         div.onclick = () => switchApp(site.url, site.id);
+        div.dataset.siteIndex = index;
+        div.draggable = true;
+        div.addEventListener('dragstart', handleDragStart, false);
+        div.addEventListener('dragenter', handleDragEnter, false);
+        div.addEventListener('dragover', handleDragOver, false);
+        div.addEventListener('dragleave', handleDragLeave, false);
+        div.addEventListener('drop', handleDrop, false);
+        div.addEventListener('dragend', handleDragEnd, false);
         
         if (site.icon && site.icon.startsWith('data:')) {
           const img = document.createElement('img');
@@ -339,6 +355,10 @@ let currentSettings = null;
         if (adblockToggle) {
           adblockToggle.checked = currentSettings.adBlockEnabled !== false;
         }
+        const adblockRulesInput = document.getElementById('adblock-rules-input');
+        if (adblockRulesInput) {
+          adblockRulesInput.value = currentSettings.adblockRules ? currentSettings.adblockRules.join('\n') : '';
+        }
         loadAppInfo();
       }
     }
@@ -368,6 +388,77 @@ let currentSettings = null;
       await window.api.updateSettings(currentSettings);
     }
 
+    async function saveAdblockRules() {
+      const rulesText = document.getElementById('adblock-rules-input').value;
+      const rules = rulesText.split('\n').map(r => r.trim()).filter(r => r.length > 0);
+      currentSettings.adblockRules = rules;
+      await window.api.updateSettings(currentSettings);
+    }
+
+    async function changeTheme() {
+      const select = document.getElementById('theme-select');
+      currentSettings.theme = select.value;
+      document.documentElement.setAttribute('data-theme', select.value);
+      await window.api.updateSettings(currentSettings);
+    }
+
+    let dragSrcEl = null;
+
+    function handleDragStart(e) {
+      this.style.opacity = '0.4';
+      dragSrcEl = this;
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', this.dataset.siteIndex);
+    }
+
+    function handleDragOver(e) {
+      if (e.preventDefault) {
+        e.preventDefault(); // Necessary. Allows us to drop.
+      }
+      e.dataTransfer.dropEffect = 'move';
+      return false;
+    }
+
+    function handleDragEnter(e) {
+      this.classList.add('over');
+      this.style.borderTop = '2px solid var(--accent)';
+    }
+
+    function handleDragLeave(e) {
+      this.classList.remove('over');
+      this.style.borderTop = '';
+    }
+
+    async function handleDrop(e) {
+      if (e.stopPropagation) {
+        e.stopPropagation(); // stops the browser from redirecting.
+      }
+      this.style.borderTop = '';
+
+      if (dragSrcEl !== this) {
+        const fromIndex = parseInt(e.dataTransfer.getData('text/plain'), 10);
+        const toIndex = parseInt(this.dataset.siteIndex, 10);
+
+        const site = currentSettings.sites[fromIndex];
+        currentSettings.sites.splice(fromIndex, 1);
+        currentSettings.sites.splice(toIndex, 0, site);
+
+        await window.api.updateSettings(currentSettings);
+        renderManageSites();
+        renderSidebar();
+      }
+      return false;
+    }
+
+    function handleDragEnd(e) {
+      this.style.opacity = '1';
+      const items = document.querySelectorAll('.site-list-item');
+      items.forEach(function (item) {
+        item.classList.remove('over');
+        item.style.borderTop = '';
+      });
+    }
+
     function renderManageSites() {
       const list = document.getElementById('manage-sites-list');
       list.innerHTML = '';
@@ -381,11 +472,14 @@ let currentSettings = null;
 
       currentSettings.sites.forEach((site, index) => {
         const item = document.createElement('div');
+        item.className = 'site-list-item';
+        item.dataset.siteIndex = index;
         item.style.display = 'flex';
         item.style.justifyContent = 'space-between';
         item.style.alignItems = 'center';
         item.style.padding = '10px';
         item.style.borderBottom = '1px solid var(--border)';
+        item.style.cursor = 'grab';
         
         let iconHtml = '';
         if (site.icon && site.icon.startsWith('data:')) {
@@ -395,8 +489,6 @@ let currentSettings = null;
         }
         
         const isEditing = site.id === editingSiteId;
-        const isFirst = index === 0;
-        const isLast = index === totalSites - 1;
 
         if (isEditing) {
           item.innerHTML = `
@@ -411,20 +503,23 @@ let currentSettings = null;
             </div>
           `;
         } else {
+          item.draggable = true;
+          item.addEventListener('dragstart', handleDragStart, false);
+          item.addEventListener('dragenter', handleDragEnter, false);
+          item.addEventListener('dragover', handleDragOver, false);
+          item.addEventListener('dragleave', handleDragLeave, false);
+          item.addEventListener('drop', handleDrop, false);
+          item.addEventListener('dragend', handleDragEnd, false);
+
           item.innerHTML = `
-            <div style="display: flex; align-items: center;">
+            <div style="display: flex; align-items: center; pointer-events: none;">
+              <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16" style="margin-right: 10px; opacity: 0.5;"><path d="M7 19v-2h10v2H7zm0-6v-2h10v2H7zm0-6V5h10v2H7z"/></svg>
               ${iconHtml}
               <div>
                 <strong>${site.name}</strong> <span style="color: var(--text-muted); font-size: 12px; margin-left: 10px;">${site.url}</span>
               </div>
             </div>
             <div style="display: flex; align-items: center; gap: 6px; -webkit-app-region: no-drag;">
-              <button class="secondary" style="padding: 6px; display: flex; align-items: center;" onclick="moveSite('${site.id}', 'up')" ${isFirst ? 'disabled style="opacity:0.3; cursor:not-allowed;"' : ''} title="Move Up">
-                <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M7 14l5-5 5 5z"/></svg>
-              </button>
-              <button class="secondary" style="padding: 6px; display: flex; align-items: center;" onclick="moveSite('${site.id}', 'down')" ${isLast ? 'disabled style="opacity:0.3; cursor:not-allowed;"' : ''} title="Move Down">
-                <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M7 10l5 5 5-5z"/></svg>
-              </button>
               <button class="secondary" style="padding: 6px 12px; font-size: 12px;" onclick="startEditSite('${site.id}')">Edit</button>
               <button class="secondary" style="padding: 6px 12px; font-size: 12px; border-color: rgba(233,64,87,0.3); color: #e94057;" onclick="removeSite('${site.id}')">Remove</button>
             </div>
@@ -475,23 +570,6 @@ let currentSettings = null;
       }
       
       editingSiteId = null;
-      await window.api.updateSettings(currentSettings);
-      renderManageSites();
-      renderSidebar();
-    }
-
-    async function moveSite(id, direction) {
-      if (!currentSettings.sites) return;
-      const index = currentSettings.sites.findIndex(s => s.id === id);
-      if (index === -1) return;
-      
-      const newIndex = direction === 'up' ? index - 1 : index + 1;
-      if (newIndex < 0 || newIndex >= currentSettings.sites.length) return;
-      
-      const temp = currentSettings.sites[index];
-      currentSettings.sites[index] = currentSettings.sites[newIndex];
-      currentSettings.sites[newIndex] = temp;
-      
       await window.api.updateSettings(currentSettings);
       renderManageSites();
       renderSidebar();
@@ -832,6 +910,12 @@ let currentSettings = null;
       }
     }
 
+    function togglePIP() {
+      if (window.api && window.api.togglePIP) {
+        window.api.togglePIP();
+      }
+    }
+
     if (window.api && window.api.onFullscreenChanged) {
       window.api.onFullscreenChanged(({ isFullscreen }) => {
         console.log('Fullscreen state changed callback:', isFullscreen);
@@ -842,6 +926,23 @@ let currentSettings = null;
         } else {
           document.body.classList.remove('fullscreen-active');
           if (btn) btn.classList.remove('active');
+        }
+      });
+    }
+
+    if (window.api && window.api.onPIPChanged) {
+      window.api.onPIPChanged((isPIP) => {
+        console.log('PIP state changed callback:', isPIP);
+        const btn = document.getElementById('pip-btn');
+        const overlay = document.getElementById('pip-overlay');
+        if (isPIP) {
+          document.body.classList.add('pip-active');
+          if (btn) btn.classList.add('active');
+          if (overlay) overlay.style.display = 'flex';
+        } else {
+          document.body.classList.remove('pip-active');
+          if (btn) btn.classList.remove('active');
+          if (overlay) overlay.style.display = 'none';
         }
       });
     }

@@ -15,16 +15,22 @@ const defaultSites = [
   { id: 'nav-genius', url: 'https://genius.com', name: 'Genius', svg: '<svg viewBox="0 0 24 24" fill="currentColor" width="22" height="22"><rect width="24" height="24" rx="4" fill="currentColor" fill-opacity="0.1"/><text x="50%" y="52%" dominant-baseline="central" text-anchor="middle" font-weight="800" font-size="18" fill="currentColor">G</text></svg>' }
 ];
 
-function loadSettings() {
-  let loaded = { extensions: [], sites: defaultSites, adBlockEnabled: true, pinnedExtensions: [], volume: 1.0 };
+async function loadSettings() {
+  let loaded = { extensions: [], sites: defaultSites, adBlockEnabled: true, pinnedExtensions: [], volume: 1.0, adblockRules: [], theme: 'pitch-black' };
   try {
-    if (fs.existsSync(settingsPath)) {
-      const parsed = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+    try {
+      await fs.promises.access(settingsPath);
+      const data = await fs.promises.readFile(settingsPath, 'utf8');
+      const parsed = JSON.parse(data);
       if (parsed.extensions) loaded.extensions = parsed.extensions;
       if (parsed.sites) loaded.sites = parsed.sites;
       if (parsed.adBlockEnabled !== undefined) loaded.adBlockEnabled = parsed.adBlockEnabled;
       if (parsed.pinnedExtensions) loaded.pinnedExtensions = parsed.pinnedExtensions;
       if (parsed.volume !== undefined) loaded.volume = parsed.volume;
+      if (parsed.adblockRules !== undefined) loaded.adblockRules = parsed.adblockRules;
+      if (parsed.theme !== undefined) loaded.theme = parsed.theme;
+    } catch (e) {
+      if (e.code !== 'ENOENT') throw e;
     }
   } catch(e) {
     console.error('Error loading settings', e);
@@ -35,9 +41,9 @@ function loadSettings() {
   return loaded;
 }
 
-function saveSettings(settings) {
+async function saveSettings(settings) {
   state.settings = settings;
-  fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
+  await fs.promises.writeFile(settingsPath, JSON.stringify(settings, null, 2));
 }
 
 module.exports = { loadSettings, saveSettings, defaultSites };
