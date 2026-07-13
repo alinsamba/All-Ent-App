@@ -10,6 +10,7 @@ const AdmZip = require('adm-zip');
 const state = require('./state');
 const { saveSettings } = require('./settings');
 const { injectVolume } = require('./window');
+const { PLAY_PAUSE_SCRIPT, NEXT_SCRIPT, PREV_SCRIPT } = require('./media');
 
 let extensionPopupWin = null;
 const extensionMetadataCache = new Map();
@@ -223,117 +224,17 @@ function registerIpcHandlers() {
 
   ipcMain.on('media-play-pause', () => {
     if (!state.view) return;
-    state.view.webContents.executeJavaScript(`
-      (function() {
-        function clickElement(el) {
-          if (!el) return false;
-          const clickEvent = new MouseEvent('click', { bubbles: true, cancelable: true, view: window });
-          el.dispatchEvent(clickEvent);
-          if (typeof el.click === 'function') el.click();
-          return true;
-        }
-
-        const playButtons = [
-          '[data-testid="control-button-playpause"]', // Spotify
-          '.ytp-play-button',                         // YouTube
-          '#play-pause-button',                       // YouTube Music
-          '.play-pause-button'                        // Generic
-        ];
-        for (const selector of playButtons) {
-          const btn = document.querySelector(selector);
-          if (btn) {
-            clickElement(btn);
-            return 'clicked-' + selector;
-          }
-        }
-
-        const media = Array.from(document.querySelectorAll('video, audio'));
-        if (media.length > 0) {
-          const playing = media.find(el => !el.paused);
-          if (playing) {
-            playing.pause();
-            return 'paused';
-          } else {
-            media[0].play().catch(() => {});
-            return 'playing';
-          }
-        }
-        return 'none';
-      })()
-    `).catch(err => console.error('Media play/pause error:', err));
+    state.view.webContents.executeJavaScript(PLAY_PAUSE_SCRIPT).catch(err => console.error('Media play/pause error:', err));
   });
 
   ipcMain.on('media-next', () => {
     if (!state.view) return;
-    state.view.webContents.executeJavaScript(`
-      (function() {
-        function clickElement(el) {
-          if (!el) return false;
-          const clickEvent = new MouseEvent('click', { bubbles: true, cancelable: true, view: window });
-          el.dispatchEvent(clickEvent);
-          if (typeof el.click === 'function') el.click();
-          return true;
-        }
-
-        const nextButtons = [
-          '[data-testid="control-button-skip-forward"]', // Spotify
-          '.ytp-next-button',                            // YouTube
-          '#next-button',                                // YouTube Music
-          '.next-button'                                 // Generic
-        ];
-        for (const selector of nextButtons) {
-          const btn = document.querySelector(selector);
-          if (btn) {
-            clickElement(btn);
-            return 'next-' + selector;
-          }
-        }
-
-        const media = document.querySelector('video, audio');
-        if (media) {
-          media.currentTime += 10;
-          return 'seek-forward';
-        }
-        return 'none';
-      })()
-    `).catch(err => console.error('Media next error:', err));
+    state.view.webContents.executeJavaScript(NEXT_SCRIPT).catch(err => console.error('Media next error:', err));
   });
 
   ipcMain.on('media-prev', () => {
     if (!state.view) return;
-    state.view.webContents.executeJavaScript(`
-      (function() {
-        function clickElement(el) {
-          if (!el) return false;
-          const clickEvent = new MouseEvent('click', { bubbles: true, cancelable: true, view: window });
-          el.dispatchEvent(clickEvent);
-          if (typeof el.click === 'function') el.click();
-          return true;
-        }
-
-        const prevButtons = [
-          '[data-testid="control-button-skip-back"]', // Spotify
-          '.ytp-prev-button',                         // YouTube
-          '#previous-button',                         // YouTube Music
-          '.previous-button',
-          '.prev-button'                              // Generic
-        ];
-        for (const selector of prevButtons) {
-          const btn = document.querySelector(selector);
-          if (btn) {
-            clickElement(btn);
-            return 'prev-' + selector;
-          }
-        }
-
-        const media = document.querySelector('video, audio');
-        if (media) {
-          media.currentTime = Math.max(0, media.currentTime - 10);
-          return 'seek-backward';
-        }
-        return 'none';
-      })()
-    `).catch(err => console.error('Media prev error:', err));
+    state.view.webContents.executeJavaScript(PREV_SCRIPT).catch(err => console.error('Media prev error:', err));
   });
 
   ipcMain.on('set-volume', (e, vol) => {
@@ -920,7 +821,9 @@ function registerIpcHandlers() {
               base64Icon = `data:${contentType};base64,${base64Data}`;
             }
           }
-        } catch (e) {}
+        } catch (e) {
+          console.warn(`Failed to fetch fallback favicon.ico for ${domain}:`, e.message);
+        }
       }
 
       if (!base64Icon) {
@@ -939,7 +842,9 @@ function registerIpcHandlers() {
               base64Icon = `data:${contentType};base64,${base64Data}`;
             }
           }
-        } catch (e) {}
+        } catch (e) {
+          console.warn(`Failed to fetch google favicon for ${domain}:`, e.message);
+        }
       }
 
       if (!base64Icon) {

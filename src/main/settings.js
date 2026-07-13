@@ -15,16 +15,20 @@ const defaultSites = [
   { id: 'nav-genius', url: 'https://genius.com', name: 'Genius', svg: '<svg viewBox="0 0 24 24" fill="currentColor" width="22" height="22"><rect width="24" height="24" rx="4" fill="currentColor" fill-opacity="0.1"/><text x="50%" y="52%" dominant-baseline="central" text-anchor="middle" font-weight="800" font-size="18" fill="currentColor">G</text></svg>' }
 ];
 
-function loadSettings() {
+async function loadSettings() {
   let loaded = { extensions: [], sites: defaultSites, adBlockEnabled: true, pinnedExtensions: [], volume: 1.0 };
   try {
-    if (fs.existsSync(settingsPath)) {
-      const parsed = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+    try {
+      await fs.promises.access(settingsPath);
+      const data = await fs.promises.readFile(settingsPath, 'utf8');
+      const parsed = JSON.parse(data);
       if (parsed.extensions) loaded.extensions = parsed.extensions;
       if (parsed.sites) loaded.sites = parsed.sites;
       if (parsed.adBlockEnabled !== undefined) loaded.adBlockEnabled = parsed.adBlockEnabled;
       if (parsed.pinnedExtensions) loaded.pinnedExtensions = parsed.pinnedExtensions;
       if (parsed.volume !== undefined) loaded.volume = parsed.volume;
+    } catch (err) {
+      if (err.code !== 'ENOENT') throw err;
     }
   } catch(e) {
     console.error('Error loading settings', e);
@@ -36,14 +40,20 @@ function loadSettings() {
 }
 
 let saveSettingsTimeout = null;
-function saveSettings(settings) {
+async function saveSettings(settings) {
   state.settings = settings;
   if (saveSettingsTimeout) clearTimeout(saveSettingsTimeout);
-  saveSettingsTimeout = setTimeout(() => {
-    fs.writeFile(settingsPath, JSON.stringify(state.settings, null, 2), (err) => {
-      if (err) console.error('Failed to save settings:', err);
-    });
-  }, 500);
+
+  return new Promise((resolve) => {
+    saveSettingsTimeout = setTimeout(async () => {
+      try {
+        await fs.promises.writeFile(settingsPath, JSON.stringify(state.settings, null, 2));
+      } catch (err) {
+        console.error('Failed to save settings:', err);
+      }
+      resolve();
+    }, 500);
+  });
 }
 
 module.exports = { loadSettings, saveSettings, defaultSites };

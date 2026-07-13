@@ -52,7 +52,7 @@ Categories=Network;WebBrowser;
 app.whenReady().then(async () => {
   setupLinuxDesktopEntry();
   app.setName('All Ent App');
-  loadSettings();
+  await loadSettings();
   
   // Load saved extensions asynchronously after a short delay
   if (state.settings && state.settings.extensions) {
