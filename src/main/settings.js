@@ -41,9 +41,15 @@ async function loadSettings() {
   return loaded;
 }
 
+let saveTimeout = null;
+
 async function saveSettings(settings) {
   state.settings = settings;
-  await fs.promises.writeFile(settingsPath, JSON.stringify(settings, null, 2));
+  if (saveTimeout) clearTimeout(saveTimeout);
+  saveTimeout = setTimeout(async () => {
+    await fs.promises.writeFile(settingsPath, JSON.stringify(settings, null, 2));
+    saveTimeout = null;
+  }, 500);
 }
 
 module.exports = { loadSettings, saveSettings, defaultSites };

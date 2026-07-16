@@ -526,24 +526,34 @@ function setSplitScreenMode(rightSiteId, enable) {
   }
 }
 
+function trySetTitleBarOverlay(win, options) {
+  if (typeof win.setTitleBarOverlay === 'function') {
+    try {
+      win.setTitleBarOverlay(options);
+    } catch (e) {
+      console.warn('Titlebar overlay not enabled or not supported:', e.message);
+    }
+  }
+}
+
 function applyTheme(win, theme) {
   if (!win) return;
   if (theme === 'glassmorphic') {
     win.setBackgroundColor('#00000000');
     win.setVibrancy('fullscreen-ui');
     win.setBackgroundMaterial('acrylic');
-    win.setTitleBarOverlay({ color: '#00000000', symbolColor: '#ffffff', height: 40 });
+    trySetTitleBarOverlay(win, { color: '#00000000', symbolColor: '#ffffff', height: 40 });
   } else if (theme === 'soft-light') {
     win.setBackgroundColor('#00000000');
     win.setVibrancy('titlebar');
     win.setBackgroundMaterial('mica');
-    win.setTitleBarOverlay({ color: '#00000000', symbolColor: '#000000', height: 40 });
+    trySetTitleBarOverlay(win, { color: '#00000000', symbolColor: '#000000', height: 40 });
   } else {
     // pitch-black (default)
     win.setBackgroundColor('#070707');
     win.setVibrancy(null);
     win.setBackgroundMaterial('none');
-    win.setTitleBarOverlay({ color: '#070707', symbolColor: '#ffffff', height: 40 });
+    trySetTitleBarOverlay(win, { color: '#070707', symbolColor: '#ffffff', height: 40 });
   }
 }
 
@@ -551,7 +561,8 @@ function createWindow() {
   const theme = state.settings && state.settings.theme ? state.settings.theme : 'pitch-black';
   const initialBgColor = theme === 'pitch-black' ? '#070707' : '#00000000';
 
-  state.win = new BrowserWindow({
+  const isWindowsOrMac = process.platform === 'win32' || process.platform === 'darwin';
+  const winOptions = {
     width: 1280,
     height: 800,
     backgroundColor: initialBgColor,
@@ -565,7 +576,17 @@ function createWindow() {
       sandbox: true,
       preload: path.join(__dirname, '..', 'preload.js')
     }
-  });
+  };
+
+  if (isWindowsOrMac) {
+    winOptions.titleBarOverlay = {
+      color: theme === 'pitch-black' ? '#070707' : '#00000000',
+      symbolColor: theme === 'soft-light' ? '#000000' : '#ffffff',
+      height: 40
+    };
+  }
+
+  state.win = new BrowserWindow(winOptions);
 
   applyTheme(state.win, theme);
 

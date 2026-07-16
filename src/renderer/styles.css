@@ -11,6 +11,11 @@
       --hover: #222222;
       --border: rgba(255, 255, 255, 0.08);
       --gradient: linear-gradient(135deg, #1db954, #8a2387, #e94057, #f27121);
+      --modal-bg: rgba(10, 10, 10, 0.75);
+      --card-bg: rgba(255, 255, 255, 0.02);
+      --input-bg: rgba(255, 255, 255, 0.05);
+      --list-item-bg: rgba(255, 255, 255, 0.05);
+      --select-opt-bg: #070707;
     }
 
     :root[data-theme="glassmorphic"] {
@@ -18,6 +23,11 @@
       --bg-sidebar: rgba(18, 10, 32, 0.5);
       --hover: rgba(255, 255, 255, 0.1);
       --border: rgba(255, 255, 255, 0.15);
+      --modal-bg: rgba(20, 12, 36, 0.75);
+      --card-bg: rgba(255, 255, 255, 0.03);
+      --input-bg: rgba(255, 255, 255, 0.06);
+      --list-item-bg: rgba(255, 255, 255, 0.06);
+      --select-opt-bg: #1a0f2e;
     }
 
     :root[data-theme="soft-light"] {
@@ -28,6 +38,11 @@
       --text-muted: #666666;
       --hover: rgba(0, 0, 0, 0.05);
       --border: rgba(0, 0, 0, 0.1);
+      --modal-bg: rgba(245, 245, 245, 0.75);
+      --card-bg: rgba(0, 0, 0, 0.02);
+      --input-bg: rgba(0, 0, 0, 0.04);
+      --list-item-bg: rgba(0, 0, 0, 0.03);
+      --select-opt-bg: #fafafa;
     }
 
     body {
@@ -155,7 +170,7 @@
       left: 0;
       right: 0;
       bottom: 0;
-      background: rgba(10, 10, 10, 0.7);
+      background: var(--modal-bg);
       backdrop-filter: blur(20px);
       -webkit-backdrop-filter: blur(20px);
       z-index: 100;
@@ -358,7 +373,7 @@
     }
 
     li {
-      background: rgba(255, 255, 255, 0.05);
+      background: var(--list-item-bg);
       border: 1px solid var(--border);
       margin: 8px 0;
       padding: 12px 16px;
@@ -561,7 +576,7 @@
     }
     .add-site-form, .extensions-list-container {
       margin-top: 25px;
-      background: rgba(255, 255, 255, 0.02);
+      background: var(--card-bg);
       border: 1px solid var(--border);
       border-radius: 10px;
       padding: 20px;
@@ -583,7 +598,7 @@
       padding: 10px 14px;
       border-radius: 8px;
       border: 1px solid var(--border);
-      background: rgba(255, 255, 255, 0.04);
+      background: var(--input-bg);
       color: var(--text);
       font-size: 13px;
       outline: none;
@@ -606,7 +621,7 @@
       min-width: 250px;
     }
     .pref-card {
-      background: rgba(255, 255, 255, 0.02);
+      background: var(--card-bg);
       border: 1px solid var(--border);
       border-radius: 10px;
       padding: 20px;
@@ -635,7 +650,7 @@
 
     /* About Tab Styles */
     .about-card {
-      background: rgba(255, 255, 255, 0.02);
+      background: var(--card-bg);
       border: 1px solid var(--border);
       border-radius: 10px;
       padding: 24px;
@@ -699,4 +714,23 @@
       color: var(--text);
       font-weight: 500;
       text-align: right;
+    }
+
+    #theme-select {
+      width: 100%;
+      margin-top: 8px;
+      padding: 8px 12px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--input-bg);
+      color: var(--text);
+      outline: none;
+      font-size: 13px;
+      font-family: inherit;
+      cursor: pointer;
+    }
+
+    #theme-select option {
+      background-color: var(--select-opt-bg);
+      color: var(--text);
     }

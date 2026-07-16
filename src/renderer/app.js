@@ -372,6 +372,10 @@ let currentSettings = null;
         if (adblockRulesInput) {
           adblockRulesInput.value = currentSettings.adblockRules ? currentSettings.adblockRules.join('\n') : '';
         }
+        const themeSelect = document.getElementById('theme-select');
+        if (themeSelect && currentSettings.theme) {
+          themeSelect.value = currentSettings.theme;
+        }
         loadAppInfo();
       }
     }

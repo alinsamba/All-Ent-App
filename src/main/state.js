@@ -14,6 +14,7 @@ module.exports = {
   leftSiteId: null,
   rightSiteId: null,
   isFullscreen: false,
-  isPIP: false,
-  prePIPBounds: null
+  volumeInjected: new Set(), // Set of siteIds that have had volume injection applied
+  viewLastUsed: new Map(),   // Map of siteId -> timestamp for LRU eviction
+  resizeRafId: null
 };

@@ -77,7 +77,7 @@
 
       <!-- URL Address Bar -->
       <div id="url-bar-container" style="flex: 1; max-width: 450px; margin: 0 20px; -webkit-app-region: no-drag;">
-        <input type="text" id="url-input" placeholder="Search or enter URL" style="width: 100%; padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border); background: rgba(255,255,255,0.05); color: var(--text); font-size: 13px; outline: none; transition: border-color 0.2s;" onkeydown="handleUrlKeydown(event)">
+        <input type="text" id="url-input" placeholder="Search or enter URL" style="width: 100%; padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border); background: var(--input-bg); color: var(--text); font-size: 13px; outline: none; transition: border-color 0.2s;" onkeydown="handleUrlKeydown(event)">
       </div>
       
       <!-- Topbar Extensions Bar -->
@@ -214,14 +214,14 @@
               <div class="pref-info" style="width: 100%;">
                 <strong>Custom Adblock Rules</strong>
                 <span>Enter custom filters or whitelisted domains (one per line). Example: <code>@@||example.com^</code> to whitelist.</span>
-                <textarea id="adblock-rules-input" rows="4" style="width: 100%; margin-top: 8px; padding: 8px; border-radius: 6px; border: 1px solid var(--border); background: rgba(255,255,255,0.05); color: var(--text); font-family: monospace; resize: vertical; box-sizing: border-box;" placeholder="@@||example.com^" onchange="saveAdblockRules()"></textarea>
+                <textarea id="adblock-rules-input" rows="4" style="width: 100%; margin-top: 8px; padding: 8px; border-radius: 6px; border: 1px solid var(--border); background: var(--input-bg); color: var(--text); font-family: monospace; resize: vertical; box-sizing: border-box;" placeholder="@@||example.com^" onchange="saveAdblockRules()"></textarea>
               </div>
             </div>
             <div class="pref-card" style="margin-top: 16px;">
               <div class="pref-info" style="width: 100%;">
                 <strong>Application Theme</strong>
                 <span>Select a native window theme profile (applies vibrancy and materials on supported operating systems).</span>
-                <select id="theme-select" onchange="changeTheme()" style="width: 100%; margin-top: 8px; padding: 8px; border-radius: 6px; border: 1px solid var(--border); background: rgba(255,255,255,0.05); color: var(--text);">
+                <select id="theme-select" onchange="changeTheme()">
                   <option value="pitch-black">AMOLED Pitch Black</option>
                   <option value="glassmorphic">Glassmorphic Deep Purple</option>
                   <option value="soft-light">Soft Light Glass</option>
