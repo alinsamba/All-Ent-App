@@ -497,6 +497,7 @@ let currentSettings = null;
 
       currentSettings.sites.forEach((site, index) => {
         const item = document.createElement('div');
+        item.id = 'manage-site-' + site.id;
         item.className = 'site-list-item';
         item.dataset.siteIndex = index;
         item.style.display = 'flex';
@@ -519,8 +520,8 @@ let currentSettings = null;
           item.innerHTML = `
             <div style="display: flex; align-items: center; gap: 10px; flex: 1;">
               ${iconHtml}
-              <input type="text" id="edit-name-${site.id}" value="${site.name}" style="padding: 6px 10px; border-radius: 6px; border: 1px solid var(--border); background: rgba(255,255,255,0.05); color: var(--text); font-size: 13px; width: 150px;">
-              <input type="text" id="edit-url-${site.id}" value="${site.url}" style="padding: 6px 10px; border-radius: 6px; border: 1px solid var(--border); background: rgba(255,255,255,0.05); color: var(--text); font-size: 13px; flex: 1; max-width: 350px;">
+              <input type="text" id="edit-name-${site.id}" value="${site.name}" style="padding: 6px 10px; border-radius: 6px; border: 1px solid var(--border); background: var(--input-bg); color: var(--text); font-size: 13px; width: 150px;">
+              <input type="text" id="edit-url-${site.id}" value="${site.url}" style="padding: 6px 10px; border-radius: 6px; border: 1px solid var(--border); background: var(--input-bg); color: var(--text); font-size: 13px; flex: 1; max-width: 350px;">
             </div>
             <div style="display: flex; gap: 6px; -webkit-app-region: no-drag;">
               <button onclick="saveSiteEdit('${site.id}')" style="padding: 6px 12px; font-size: 12px; background-color: var(--accent); color: var(--bg-dark);">Save</button>
@@ -550,6 +551,7 @@ let currentSettings = null;
             </div>
           `;
         }
+        list.appendChild(item);
       });
     }
 
