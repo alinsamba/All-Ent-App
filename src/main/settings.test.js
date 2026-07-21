@@ -20,7 +20,12 @@ describe('settings.js', () => {
         writeFile: jest.fn().mockResolvedValue(undefined)
       };
 
-      await saveSettings(mockSettings);
+      jest.useFakeTimers();
+
+      const savePromise = saveSettings(mockSettings);
+      
+      jest.runAllTimers();
+      await savePromise;
 
       expect(state.settings).toEqual(mockSettings);
       expect(fs.promises.writeFile).toHaveBeenCalledWith(

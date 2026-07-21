@@ -25,6 +25,8 @@ let currentSettings = null;
             btn.style.display = 'none';
           }
         }
+
+        updateAddToSidebarButtonState(url);
       });
     }
 
@@ -172,6 +174,21 @@ let currentSettings = null;
         currentSettings = newSettings;
         renderPinnedExtensions();
         updateExtensionsList();
+        renderSidebar();
+        renderManageSites();
+        
+        const urlInput = document.getElementById('url-input');
+        if (urlInput) {
+          updateAddToSidebarButtonState(urlInput.value);
+        }
+      });
+    }
+
+    if (window.api && window.api.onShowToast) {
+      window.api.onShowToast((data) => {
+        if (data && data.message) {
+          showToast(data.message, data.type || 'success');
+        }
       });
     }
 
@@ -189,15 +206,22 @@ let currentSettings = null;
       // Dynamic titlebar padding depending on OS to fit system window controls cleanly
       const isMac = navigator.userAgent.includes('Mac');
       const isWin = navigator.userAgent.includes('Win');
+      const isLinux = window.api && window.api.isLinux;
       const titlebar = document.getElementById('titlebar');
+      const windowControls = document.getElementById('window-controls');
       if (titlebar) {
         if (isMac) {
           titlebar.style.paddingLeft = '80px';
           titlebar.style.paddingRight = '16px';
         } else if (isWin) {
           titlebar.style.paddingRight = '145px';
+        } else if (isLinux) {
+          titlebar.style.paddingRight = '16px';
+          if (windowControls) {
+            windowControls.style.display = 'flex';
+          }
         } else {
-          // Linux (GNOME window control overlays are narrower, usually around ~90px-100px)
+          // Linux fallback or other
           titlebar.style.paddingRight = '95px';
         }
       }
@@ -486,14 +510,7 @@ let currentSettings = null;
         heading.textContent = `Manage Sites (${totalSites}/10)`;
       }
 
-      const existingNodes = Array.from(list.children);
-      const newIds = new Set(currentSettings.sites.map(s => 'manage-site-' + s.id));
-
-      existingNodes.forEach(node => {
-        if (!newIds.has(node.id)) {
-          list.removeChild(node);
-        }
-      });
+      list.innerHTML = '';
 
       currentSettings.sites.forEach((site, index) => {
         const item = document.createElement('div');
@@ -599,6 +616,138 @@ let currentSettings = null;
       await window.api.updateSettings(currentSettings);
       renderManageSites();
       renderSidebar();
+    }
+
+    function showToast(message, type = 'success') {
+      const container = document.getElementById('toast-container');
+      if (!container) return;
+      
+      const toast = document.createElement('div');
+      toast.className = `toast-notification ${type}`;
+      
+      let icon = '';
+      if (type === 'success') {
+        icon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="16" height="16" style="color: #ffd700;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>`;
+      } else {
+        icon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="16" height="16" style="color: #e94057;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>`;
+      }
+      
+      toast.innerHTML = `
+        ${icon}
+        <span style="flex: 1;">${message}</span>
+      `;
+      
+      container.appendChild(toast);
+      
+      setTimeout(() => {
+        toast.remove();
+      }, 3000);
+    }
+
+    function isSiteAlreadyAdded(url) {
+      if (!currentSettings || !currentSettings.sites || !url) return false;
+      try {
+        const u1 = new URL(url);
+        const norm1 = u1.origin + u1.pathname.replace(/\/$/, '');
+        return currentSettings.sites.some(site => {
+          try {
+            const u2 = new URL(site.url);
+            const norm2 = u2.origin + u2.pathname.replace(/\/$/, '');
+            return norm1 === norm2;
+          } catch (e) {
+            return false;
+          }
+        });
+      } catch (e) {
+        return false;
+      }
+    }
+
+    function updateAddToSidebarButtonState(url) {
+      const btn = document.getElementById('add-to-sidebar-btn');
+      if (!btn) return;
+      
+      if (!url || !url.startsWith('http')) {
+        btn.style.display = 'none';
+        return;
+      }
+      
+      btn.style.display = 'flex';
+      const added = isSiteAlreadyAdded(url);
+      if (added) {
+        btn.classList.add('active');
+        btn.title = "This site is in your sidebar";
+        btn.innerHTML = `<svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>`;
+      } else {
+        btn.classList.remove('active');
+        btn.title = "Add this site to sidebar";
+        btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>`;
+      }
+    }
+
+    async function addCurrentPageToSidebar() {
+      if (!window.api || !window.api.getCurrentPageInfo) return;
+      
+      const pageInfo = await window.api.getCurrentPageInfo();
+      if (!pageInfo || !pageInfo.url) {
+        showToast('No active page detected.', 'error');
+        return;
+      }
+      
+      let { url, title } = pageInfo;
+      
+      if (!url.startsWith('http')) {
+        showToast('Only web pages can be added to the sidebar.', 'error');
+        return;
+      }
+      
+      if (currentSettings.sites && currentSettings.sites.length >= 10) {
+        showToast('Maximum of 10 sites allowed. Please remove one first.', 'error');
+        return;
+      }
+      
+      if (isSiteAlreadyAdded(url)) {
+        showToast('Site is already in your sidebar.', 'error');
+        return;
+      }
+      
+      let name = title.trim();
+      if (!name) {
+        try {
+          name = new URL(url).hostname.replace(/^www\./, '');
+        } catch (e) {
+          name = 'Custom Site';
+        }
+      }
+      if (name.length > 30) {
+        name = name.substring(0, 27) + '...';
+      }
+      
+      showToast('Fetching site icon...', 'success');
+      let icon = null;
+      try {
+        const result = await window.api.getSiteIcon(url);
+        if (result && result.startsWith('data:')) {
+          icon = result;
+        }
+      } catch (err) {
+        console.error('Failed to get site icon:', err);
+      }
+      
+      const id = 'nav-custom-' + Date.now();
+      const firstLetter = name.charAt(0).toUpperCase();
+      const svg = `<svg viewBox="0 0 24 24" fill="currentColor" width="22" height="22"><rect width="24" height="24" rx="4" fill="currentColor" fill-opacity="0.1"/><text x="50%" y="52%" dominant-baseline="central" text-anchor="middle" font-weight="800" font-size="18" fill="currentColor">${firstLetter}</text></svg>`;
+      
+      if (!currentSettings.sites) currentSettings.sites = [];
+      currentSettings.sites.push({ id, name, url, svg, icon });
+      
+      await window.api.updateSettings(currentSettings);
+      
+      renderManageSites();
+      renderSidebar();
+      updateAddToSidebarButtonState(url);
+      
+      showToast(`Added "${name}" to sidebar!`, 'success');
     }
 
     async function addSite() {
@@ -997,6 +1146,21 @@ let currentSettings = null;
           document.body.classList.remove('pip-active');
           if (btn) btn.classList.remove('active');
           if (overlay) overlay.style.display = 'none';
+        }
+      });
+    }
+
+    if (window.api && window.api.onMaximizedStateChanged) {
+      window.api.onMaximizedStateChanged((isMaximized) => {
+        const btn = document.getElementById('window-maximize-btn');
+        if (btn) {
+          if (isMaximized) {
+            btn.title = "Restore";
+            btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="4" width="12" height="12" rx="1.5"></rect><path d="M4 8v10a2 2 0 0 0 2 2h10" stroke-linecap="round"></path></svg>`;
+          } else {
+            btn.title = "Maximize";
+            btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect></svg>`;
+          }
         }
       });
     }

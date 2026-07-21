@@ -734,3 +734,82 @@
       background-color: var(--select-opt-bg);
       color: var(--text);
     }
+
+    /* Custom Window Controls */
+    #window-controls {
+      display: none;
+      align-items: center;
+      gap: 6px;
+      margin-left: 8px;
+    }
+
+    .window-control-btn {
+      width: 28px;
+      height: 28px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      border-radius: 6px;
+      cursor: pointer;
+      color: var(--text-muted);
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      -webkit-app-region: no-drag;
+    }
+
+    .window-control-btn:hover {
+      background-color: var(--hover);
+      color: var(--text);
+    }
+
+    .window-control-btn.close:hover {
+      background-color: rgba(239, 68, 68, 0.2);
+      color: #ef4444;
+    }
+
+    /* Toast Notifications and Bookmark Button styles */
+    #add-to-sidebar-btn:hover {
+      color: #ffd700 !important; /* Gold color for star hover */
+      transform: scale(1.15);
+      background-color: rgba(255, 255, 255, 0.05);
+    }
+
+    #add-to-sidebar-btn.active {
+      color: #ffd700 !important; /* Gold for bookmarked */
+    }
+
+    .toast-notification {
+      background: rgba(15, 15, 15, 0.85);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 10px 16px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      animation: toastSlideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards, toastFadeOut 0.3s cubic-bezier(0.16, 1, 0.3, 1) 2.7s forwards;
+      pointer-events: auto;
+      max-width: 320px;
+    }
+
+    .toast-notification.error {
+      border-left: 3px solid #e94057;
+    }
+
+    .toast-notification.success {
+      border-left: 3px solid #ffd700;
+    }
+
+    @keyframes toastSlideIn {
+      from { transform: translateY(30px) scale(0.9); opacity: 0; }
+      to { transform: translateY(0) scale(1); opacity: 1; }
+    }
+
+    @keyframes toastFadeOut {
+      from { transform: translateY(0) scale(1); opacity: 1; }
+      to { transform: translateY(-10px) scale(0.95); opacity: 0; }
+    }

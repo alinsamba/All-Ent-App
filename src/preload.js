@@ -19,9 +19,11 @@ contextBridge.exposeInMainWorld('api', {
   installWebstoreExtension: (idOrUrl) => ipcRenderer.invoke('install-webstore-extension', idOrUrl),
   removeExtension: (extPath) => ipcRenderer.invoke('remove-extension', extPath),
   getSettings: () => ipcRenderer.invoke('get-settings'),
+  getCurrentPageInfo: () => ipcRenderer.invoke('get-current-page-info'),
   getAppInfo: () => ipcRenderer.invoke('get-app-info'),
   updateSettings: (settings) => ipcRenderer.send('update-settings', settings),
   onSettingsUpdated: (callback) => ipcRenderer.on('settings-updated', (e, settings) => callback(settings)),
+  onShowToast: (callback) => ipcRenderer.on('show-toast', (e, data) => callback(data)),
   toggleSettingsView: (isOpen) => ipcRenderer.send('toggle-settings-view', isOpen),
   mediaPlayPause: () => ipcRenderer.send('media-play-pause'),
   mediaNext: () => ipcRenderer.send('media-next'),
@@ -37,5 +39,10 @@ contextBridge.exposeInMainWorld('api', {
   showExtensionsMenu: (bounds) => ipcRenderer.send('show-extensions-menu', bounds),
   onShowLoader: (callback) => ipcRenderer.on('show-loader', () => callback()),
   onHideLoader: (callback) => ipcRenderer.on('hide-loader', () => callback()),
-  onThemeChanged: (callback) => ipcRenderer.on('theme-changed', (e, theme) => callback(theme))
+  onThemeChanged: (callback) => ipcRenderer.on('theme-changed', (e, theme) => callback(theme)),
+  isLinux: process.platform === 'linux',
+  minimizeWindow: () => ipcRenderer.send('window-minimize'),
+  maximizeWindow: () => ipcRenderer.send('window-maximize'),
+  closeWindow: () => ipcRenderer.send('window-close'),
+  onMaximizedStateChanged: (callback) => ipcRenderer.on('window-maximized-state', (e, isMaximized) => callback(isMaximized))
 });

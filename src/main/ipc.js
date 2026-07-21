@@ -380,6 +380,25 @@ function registerIpcHandlers() {
     togglePIP();
   });
 
+  ipcMain.on('window-minimize', () => {
+    if (state.win) state.win.minimize();
+  });
+
+  ipcMain.on('window-maximize', () => {
+    if (state.win) {
+      if (state.win.isMaximized()) {
+        state.win.unmaximize();
+      } else {
+        state.win.maximize();
+      }
+    }
+  });
+
+  ipcMain.on('window-close', () => {
+    if (state.win) state.win.close();
+  });
+
+
   ipcMain.handle('get-split-state', () => {
     return {
       isSplitMode: state.isSplitMode,
@@ -590,6 +609,16 @@ function registerIpcHandlers() {
   });
 
   ipcMain.handle('get-settings', () => state.settings);
+
+  ipcMain.handle('get-current-page-info', () => {
+    if (state.view && !state.view.webContents.isDestroyed()) {
+      return {
+        url: state.view.webContents.getURL(),
+        title: state.view.webContents.getTitle()
+      };
+    }
+    return null;
+  });
 
   ipcMain.handle('get-app-info', () => {
     return {
@@ -828,87 +857,227 @@ function registerIpcHandlers() {
   });
 
   ipcMain.handle('get-site-icon', async (event, url) => {
-    try {
-      const parsedUrl = new URL(url);
-      const domain = parsedUrl.hostname;
-      const origin = parsedUrl.origin;
-      let base64Icon = null;
-
-      const iconUrl = await extractIconUrlFromHtml(origin);
-
-      if (iconUrl) {
-        try {
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 3000);
-          const imgRes = await fetch(iconUrl, { signal: controller.signal });
-          clearTimeout(timeoutId);
-
-          if (imgRes.ok) {
-            const contentType = imgRes.headers.get('content-type') || 'image/png';
-            if (contentType.startsWith('image/')) {
-              const buffer = await imgRes.arrayBuffer();
-              const base64Data = Buffer.from(buffer).toString('base64');
-              base64Icon = `data:${contentType};base64,${base64Data}`;
-            }
-          }
-        } catch (e) {
-          console.warn(`Failed to fetch extracted favicon from ${iconUrl}:`, e.message);
-        }
-      }
-
-      if (!base64Icon) {
-        try {
-          const fallbackUrl = `${origin}/favicon.ico`;
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 3000);
-          const imgRes = await fetch(fallbackUrl, { signal: controller.signal });
-          clearTimeout(timeoutId);
-
-          if (imgRes.ok) {
-            const contentType = imgRes.headers.get('content-type') || 'image/x-icon';
-            if (contentType.startsWith('image/')) {
-              const buffer = await imgRes.arrayBuffer();
-              const base64Data = Buffer.from(buffer).toString('base64');
-              base64Icon = `data:${contentType};base64,${base64Data}`;
-            }
-          }
-        } catch (e) {
-          console.warn(`Failed to fetch fallback favicon.ico for ${domain}:`, e.message);
-        }
-      }
-
-      if (!base64Icon) {
-        try {
-          const googleFaviconUrl = `https://www.google.com/s2/favicons?domain=${domain}&sz=128`;
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 3000);
-          const gRes = await fetch(googleFaviconUrl, { signal: controller.signal });
-          clearTimeout(timeoutId);
-
-          if (gRes.ok) {
-            const contentType = gRes.headers.get('content-type') || 'image/png';
-            if (contentType.startsWith('image/')) {
-              const buffer = await gRes.arrayBuffer();
-              const base64Data = Buffer.from(buffer).toString('base64');
-              base64Icon = `data:${contentType};base64,${base64Data}`;
-            }
-          }
-        } catch (e) {
-          console.warn(`Failed to fetch google favicon for ${domain}:`, e.message);
-        }
-      }
-
-      if (!base64Icon) {
-        const firstLetter = (domain.replace('www.', '') || 'W').charAt(0).toUpperCase();
-        return `letter:${firstLetter}`;
-      }
-
-      return base64Icon;
-    } catch (err) {
-      console.error('get-site-icon IPC error:', err);
-      return 'letter:?';
-    }
+    return fetchSiteIcon(url);
   });
+
+  // Register global context menu for web pages (e.g. standard pages and brief popup windows)
+  app.on('web-contents-created', (event, webContents) => {
+    webContents.on('context-menu', (event, params) => {
+      const pageUrl = params.pageURL || webContents.getURL();
+      if (!pageUrl || (!pageUrl.startsWith('http://') && !pageUrl.startsWith('https://'))) {
+        return; // Skip non-webpages (e.g. index.html, extension popups)
+      }
+
+      event.preventDefault();
+      const { Menu, MenuItem } = require('electron');
+      const menu = new Menu();
+
+      // Navigation
+      menu.append(new MenuItem({
+        label: 'Back',
+        enabled: webContents.canGoBack(),
+        click: () => webContents.goBack()
+      }));
+      menu.append(new MenuItem({
+        label: 'Forward',
+        enabled: webContents.canGoForward(),
+        click: () => webContents.goForward()
+      }));
+      menu.append(new MenuItem({
+        label: 'Reload',
+        click: () => webContents.reload()
+      }));
+
+      menu.append(new MenuItem({ type: 'separator' }));
+
+      // Editing
+      menu.append(new MenuItem({
+        label: 'Cut',
+        role: 'cut',
+        enabled: params.editFlags.canCut
+      }));
+      menu.append(new MenuItem({
+        label: 'Copy',
+        role: 'copy',
+        enabled: params.editFlags.canCopy
+      }));
+      menu.append(new MenuItem({
+        label: 'Paste',
+        role: 'paste',
+        enabled: params.editFlags.canPaste
+      }));
+      menu.append(new MenuItem({
+        label: 'Select All',
+        role: 'selectall'
+      }));
+
+      // Add to Sidebar
+      menu.append(new MenuItem({ type: 'separator' }));
+
+      const isAdded = isSiteAlreadyInSettings(pageUrl);
+      const sitesLimitReached = state.settings && state.settings.sites && state.settings.sites.length >= 10;
+
+      if (isAdded) {
+        menu.append(new MenuItem({
+          label: 'Already in Sidebar',
+          enabled: false
+        }));
+      } else if (sitesLimitReached) {
+        menu.append(new MenuItem({
+          label: 'Add to Sidebar (Limit Reached)',
+          enabled: false
+        }));
+      } else {
+        menu.append(new MenuItem({
+          label: 'Add to Sidebar',
+          click: async () => {
+            await addPageToSidebarMain(pageUrl, webContents.getTitle());
+          }
+        }));
+      }
+
+      menu.popup({ window: BrowserWindow.fromWebContents(webContents) });
+    });
+  });
+}
+
+async function fetchSiteIcon(url) {
+  try {
+    const parsedUrl = new URL(url);
+    const domain = parsedUrl.hostname;
+    const origin = parsedUrl.origin;
+    let base64Icon = null;
+
+    const iconUrl = await extractIconUrlFromHtml(origin);
+
+    if (iconUrl) {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 3000);
+        const imgRes = await fetch(iconUrl, { signal: controller.signal });
+        clearTimeout(timeoutId);
+
+        if (imgRes.ok) {
+          const contentType = imgRes.headers.get('content-type') || 'image/png';
+          if (contentType.startsWith('image/')) {
+            const buffer = await imgRes.arrayBuffer();
+            const base64Data = Buffer.from(buffer).toString('base64');
+            base64Icon = `data:${contentType};base64,${base64Data}`;
+          }
+        }
+      } catch (e) {
+        console.warn(`Failed to fetch extracted favicon from ${iconUrl}:`, e.message);
+      }
+    }
+
+    if (!base64Icon) {
+      try {
+        const fallbackUrl = `${origin}/favicon.ico`;
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 3000);
+        const imgRes = await fetch(fallbackUrl, { signal: controller.signal });
+        clearTimeout(timeoutId);
+
+        if (imgRes.ok) {
+          const contentType = imgRes.headers.get('content-type') || 'image/x-icon';
+          if (contentType.startsWith('image/')) {
+            const buffer = await imgRes.arrayBuffer();
+            const base64Data = Buffer.from(buffer).toString('base64');
+            base64Icon = `data:${contentType};base64,${base64Data}`;
+          }
+        }
+      } catch (e) {
+        console.warn(`Failed to fetch fallback favicon.ico for ${domain}:`, e.message);
+      }
+    }
+
+    if (!base64Icon) {
+      try {
+        const googleFaviconUrl = `https://www.google.com/s2/favicons?domain=${domain}&sz=128`;
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 3000);
+        const gRes = await fetch(googleFaviconUrl, { signal: controller.signal });
+        clearTimeout(timeoutId);
+
+        if (gRes.ok) {
+          const contentType = gRes.headers.get('content-type') || 'image/png';
+          if (contentType.startsWith('image/')) {
+            const buffer = await gRes.arrayBuffer();
+            const base64Data = Buffer.from(buffer).toString('base64');
+            base64Icon = `data:${contentType};base64,${base64Data}`;
+          }
+        }
+      } catch (e) {
+        console.warn(`Failed to fetch google favicon for ${domain}:`, e.message);
+      }
+    }
+
+    if (!base64Icon) {
+      const firstLetter = (domain.replace('www.', '') || 'W').charAt(0).toUpperCase();
+      return `letter:${firstLetter}`;
+    }
+
+    return base64Icon;
+  } catch (err) {
+    console.error('fetchSiteIcon error:', err);
+    return 'letter:?';
+  }
+}
+
+function isSiteAlreadyInSettings(url) {
+  if (!state.settings || !state.settings.sites) return false;
+  try {
+    const u1 = new URL(url);
+    const norm1 = u1.origin + u1.pathname.replace(/\/$/, '');
+    return state.settings.sites.some(s => {
+      try {
+        const u2 = new URL(s.url);
+        const norm2 = u2.origin + u2.pathname.replace(/\/$/, '');
+        return norm1 === norm2;
+      } catch (e) {
+        return false;
+      }
+    });
+  } catch (e) {
+    return false;
+  }
+}
+
+async function addPageToSidebarMain(url, title) {
+  if (!state.settings) return;
+  if (!state.settings.sites) state.settings.sites = [];
+  if (state.settings.sites.length >= 10) return;
+
+  let name = (title || '').trim();
+  if (!name) {
+    try {
+      name = new URL(url).hostname.replace(/^www\./, '');
+    } catch (e) {
+      name = 'Custom Site';
+    }
+  }
+  if (name.length > 30) {
+    name = name.substring(0, 27) + '...';
+  }
+
+  const id = 'nav-custom-' + Date.now();
+  const firstLetter = name.charAt(0).toUpperCase();
+  const svg = `<svg viewBox="0 0 24 24" fill="currentColor" width="22" height="22"><rect width="24" height="24" rx="4" fill="currentColor" fill-opacity="0.1"/><text x="50%" y="52%" dominant-baseline="central" text-anchor="middle" font-weight="800" font-size="18" fill="currentColor">${firstLetter}</text></svg>`;
+
+  let icon = null;
+  const siteIcon = await fetchSiteIcon(url);
+  if (siteIcon && siteIcon.startsWith('data:')) {
+    icon = siteIcon;
+  }
+
+  state.settings.sites.push({ id, name, url, svg, icon });
+  await saveSettings(state.settings);
+
+  // Notify main window to update settings and show toast
+  if (state.win && !state.win.isDestroyed()) {
+    state.win.webContents.send('settings-updated', state.settings);
+    state.win.webContents.send('show-toast', { message: `Added "${name}" to sidebar!`, type: 'success' });
+  }
 }
 
 module.exports = { registerIpcHandlers };

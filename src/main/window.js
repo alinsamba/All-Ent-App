@@ -606,8 +606,18 @@ function createWindow() {
   });
 
   state.win.on('resize', resizeViewDelayed);
-  state.win.on('maximize', resizeViewDelayed);
-  state.win.on('unmaximize', resizeViewDelayed);
+  state.win.on('maximize', () => {
+    resizeViewDelayed();
+    if (state.win && !state.win.isDestroyed()) {
+      state.win.webContents.send('window-maximized-state', true);
+    }
+  });
+  state.win.on('unmaximize', () => {
+    resizeViewDelayed();
+    if (state.win && !state.win.isDestroyed()) {
+      state.win.webContents.send('window-maximized-state', false);
+    }
+  });
   state.win.on('restore', resizeViewDelayed);
   state.win.on('show', resizeViewDelayed);
 
