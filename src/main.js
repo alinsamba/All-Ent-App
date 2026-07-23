@@ -58,7 +58,7 @@ app.whenReady().then(async () => {
   if (state.settings && state.settings.extensions) {
     setTimeout(async () => {
       const appSession = session.fromPartition('persist:allentapp');
-      for (const extPath of state.settings.extensions) {
+      await Promise.all(state.settings.extensions.map(async (extPath) => {
         try {
           await session.defaultSession.extensions.loadExtension(extPath);
         } catch (e) {
@@ -69,7 +69,7 @@ app.whenReady().then(async () => {
         } catch (e) {
           console.error('Failed to load saved extension in persist:allentapp session:', extPath, e);
         }
-      }
+      }));
     }, 500);
   }
 
