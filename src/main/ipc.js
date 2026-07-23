@@ -352,8 +352,12 @@ function registerIpcHandlers() {
   });
 
   ipcMain.on('toggle-split-screen', (e, { rightSiteId, enable }) => {
-    const { setSplitScreenMode } = require('./window');
-    setSplitScreenMode(rightSiteId, enable);
+    const { enableSplitScreenMode, disableSplitScreenMode } = require('./window');
+    if (enable) {
+      enableSplitScreenMode(rightSiteId);
+    } else {
+      disableSplitScreenMode();
+    }
   });
 
   ipcMain.on('open-external-popup', (e, url) => {
@@ -409,11 +413,11 @@ function registerIpcHandlers() {
 
   ipcMain.on('show-split-menu', (e, { x, y }) => {
     const { Menu } = require('electron');
-    const { setSplitScreenMode } = require('./window');
+    const { enableSplitScreenMode, disableSplitScreenMode } = require('./window');
 
     if (state.isSplitMode) {
       console.log('[IPC] show-split-menu: Split active, toggling OFF');
-      setSplitScreenMode(null, false);
+      disableSplitScreenMode();
       state.win.webContents.send('split-state-changed', { isSplitMode: false });
       return;
     }
@@ -434,7 +438,7 @@ function registerIpcHandlers() {
       label: site.name,
       click: () => {
         console.log(`[IPC] Native split menu selected site: ${site.id}`);
-        setSplitScreenMode(site.id, true);
+        enableSplitScreenMode(site.id);
         state.win.webContents.send('split-state-changed', { isSplitMode: true });
       }
     }));
