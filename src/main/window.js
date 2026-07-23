@@ -590,11 +590,15 @@ function createWindow() {
 
   applyTheme(state.win, theme);
 
+  setupWindowEvents();
+
+  state.win.loadFile(path.join(__dirname, '..', 'renderer', 'index.html'));
+}
+
+function setupWindowEvents() {
   state.win.once('ready-to-show', () => {
     state.win.show();
   });
-
-  state.win.loadFile(path.join(__dirname, '..', 'renderer', 'index.html'));
 
   state.win.webContents.on('before-input-event', handleShortcut);
 
