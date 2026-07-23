@@ -460,70 +460,76 @@ function switchAppView(url, siteId, forceNavigate = false) {
   }
 }
 
-function setSplitScreenMode(rightSiteId, enable) {
-  console.log(`[Split Screen] setSplitScreenMode: rightSiteId=${rightSiteId}, enable=${enable}`);
+function enableSplitScreenMode(rightSiteId) {
+  console.log(`[Split Screen] enableSplitScreenMode: rightSiteId=${rightSiteId}`);
   if (!state.win || !state.leftSiteId) {
     console.log(`[Split Screen] Ignored: win=${!!state.win}, leftSiteId=${state.leftSiteId}`);
     return;
   }
 
-  if (enable) {
-    if (state.leftSiteId === rightSiteId) {
-      console.log(`[Split Screen] Prevented split of same site: ${rightSiteId}`);
-      return;
-    }
-
-    const rightSite = state.settings.sites.find(s => s.id === rightSiteId);
-    if (!rightSite) {
-      console.log(`[Split Screen] Site not found in settings: ${rightSiteId}`);
-      return;
-    }
-
-    console.log(`[Split Screen] Activating split with right site ${rightSite.name} (${rightSite.url})`);
-    
-    const isNew = !state.views.has(rightSiteId);
-    const rightView = getOrCreateSiteView(rightSiteId, rightSite.url);
-    recordViewAccess(rightSiteId);
-    if (!isNew) {
-      console.log(`[Split Screen] Reloading right-side view to base URL`);
-      rightView.webContents.loadURL(rightSite.url);
-    }
-
-    state.isSplitMode = true;
-    state.rightSiteId = rightSiteId;
-
-    const leftView = state.views.get(state.leftSiteId);
-    if (leftView) {
-      try {
-        console.log(`[Split Screen] Mounting left view: ${state.leftSiteId}`);
-        state.win.contentView.addChildView(leftView);
-      } catch(e) {
-        console.error('[Split Screen] Error mounting left view:', e);
-      }
-    }
-    try {
-      console.log(`[Split Screen] Mounting right view: ${rightSiteId}`);
-      state.win.contentView.addChildView(rightView);
-    } catch(e) {
-      console.error('[Split Screen] Error mounting right view:', e);
-    }
-
-    resizeViewDelayed();
-    pruneViews();
-  } else {
-    console.log(`[Split Screen] Disabling split screen`);
-    const rightView = state.views.get(state.rightSiteId);
-    if (rightView) {
-      console.log(`[Split Screen] Pausing and unmounting right view: ${state.rightSiteId}`);
-      pauseViewPlayback(rightView);
-      try { state.win.contentView.removeChildView(rightView); } catch(e) { console.error('Error removing right view:', e); }
-    }
-
-    state.isSplitMode = false;
-    state.rightSiteId = null;
-
-    resizeViewDelayed();
+  if (state.leftSiteId === rightSiteId) {
+    console.log(`[Split Screen] Prevented split of same site: ${rightSiteId}`);
+    return;
   }
+
+  const rightSite = state.settings.sites.find(s => s.id === rightSiteId);
+  if (!rightSite) {
+    console.log(`[Split Screen] Site not found in settings: ${rightSiteId}`);
+    return;
+  }
+
+  console.log(`[Split Screen] Activating split with right site ${rightSite.name} (${rightSite.url})`);
+
+  const isNew = !state.views.has(rightSiteId);
+  const rightView = getOrCreateSiteView(rightSiteId, rightSite.url);
+  recordViewAccess(rightSiteId);
+  if (!isNew) {
+    console.log(`[Split Screen] Reloading right-side view to base URL`);
+    rightView.webContents.loadURL(rightSite.url);
+  }
+
+  state.isSplitMode = true;
+  state.rightSiteId = rightSiteId;
+
+  const leftView = state.views.get(state.leftSiteId);
+  if (leftView) {
+    try {
+      console.log(`[Split Screen] Mounting left view: ${state.leftSiteId}`);
+      state.win.contentView.addChildView(leftView);
+    } catch(e) {
+      console.error('[Split Screen] Error mounting left view:', e);
+    }
+  }
+  try {
+    console.log(`[Split Screen] Mounting right view: ${rightSiteId}`);
+    state.win.contentView.addChildView(rightView);
+  } catch(e) {
+    console.error('[Split Screen] Error mounting right view:', e);
+  }
+
+  resizeViewDelayed();
+  pruneViews();
+}
+
+function disableSplitScreenMode() {
+  console.log(`[Split Screen] disableSplitScreenMode`);
+  if (!state.win || !state.leftSiteId) {
+    console.log(`[Split Screen] Ignored: win=${!!state.win}, leftSiteId=${state.leftSiteId}`);
+    return;
+  }
+
+  console.log(`[Split Screen] Disabling split screen`);
+  const rightView = state.views.get(state.rightSiteId);
+  if (rightView) {
+    console.log(`[Split Screen] Pausing and unmounting right view: ${state.rightSiteId}`);
+    pauseViewPlayback(rightView);
+    try { state.win.contentView.removeChildView(rightView); } catch(e) { console.error('Error removing right view:', e); }
+  }
+
+  state.isSplitMode = false;
+  state.rightSiteId = null;
+
+  resizeViewDelayed();
 }
 
 function trySetTitleBarOverlay(win, options) {
@@ -709,4 +715,4 @@ function openBriefPopup(url) {
   popup.setMenu(null);
 }
 
-module.exports = { createWindow, injectVolume, switchAppView, setSplitScreenMode, pauseViewPlayback, openBriefPopup, toggleFullscreen, togglePIP, applyTheme };
+module.exports = { createWindow, injectVolume, switchAppView, enableSplitScreenMode, disableSplitScreenMode, pauseViewPlayback, openBriefPopup, toggleFullscreen, togglePIP, applyTheme };
