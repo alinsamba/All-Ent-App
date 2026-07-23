@@ -383,6 +383,59 @@ const resizeViewDelayed = () => {
   resizeTimeout1 = setTimeout(resizeView, 50);
 };
 
+function handleSplitModeSwitch(targetView, siteId) {
+  if (state.rightSiteId === siteId) {
+    state.rightSiteId = state.leftSiteId;
+  }
+
+  const oldLeftView = state.views.get(state.leftSiteId);
+  if (oldLeftView && oldLeftView !== targetView && state.rightSiteId !== state.leftSiteId) {
+    try { state.win.contentView.removeChildView(oldLeftView); } catch(e) { console.error('Error removing old left view:', e); }
+  }
+
+  state.leftSiteId = siteId;
+  state.view = targetView;
+
+  try {
+    state.win.contentView.addChildView(targetView);
+  } catch (e) {
+    console.warn('Error adding child view in split mode:', e.message);
+  }
+
+  const currentUrl = targetView.webContents.getURL();
+  state.win.webContents.send('page-navigated', currentUrl);
+
+  resizeViewDelayed();
+  pruneViews();
+}
+
+function handleSingleModeSwitch(targetView, siteId) {
+  state.views.forEach((v, id) => {
+    if (id !== siteId) {
+      try {
+        state.win.contentView.removeChildView(v);
+      } catch (e) {
+        console.warn(`Error removing child view ${id} during non-split switch:`, e.message);
+      }
+    }
+  });
+
+  state.view = targetView;
+  state.leftSiteId = siteId;
+
+  try {
+    state.win.contentView.addChildView(targetView);
+  } catch (e) {
+    console.warn('Error adding child view during non-split switch:', e.message);
+  }
+
+  const currentUrl = targetView.webContents.getURL();
+  state.win.webContents.send('page-navigated', currentUrl);
+
+  resizeViewDelayed();
+  pruneViews();
+}
+
 function switchAppView(url, siteId, forceNavigate = false) {
   if (!state.win) return;
 
@@ -400,54 +453,9 @@ function switchAppView(url, siteId, forceNavigate = false) {
   }
 
   if (state.isSplitMode) {
-    if (state.rightSiteId === siteId) {
-      state.rightSiteId = state.leftSiteId;
-    }
-    
-    const oldLeftView = state.views.get(state.leftSiteId);
-    if (oldLeftView && oldLeftView !== targetView && state.rightSiteId !== state.leftSiteId) {
-      try { state.win.contentView.removeChildView(oldLeftView); } catch(e) { console.error('Error removing old left view:', e); }
-    }
-
-    state.leftSiteId = siteId;
-    state.view = targetView;
-
-    try {
-      state.win.contentView.addChildView(targetView);
-    } catch (e) {
-      console.warn('Error adding child view in split mode:', e.message);
-    }
-
-    const currentUrl = targetView.webContents.getURL();
-    state.win.webContents.send('page-navigated', currentUrl);
-    
-    resizeViewDelayed();
-    pruneViews();
+    handleSplitModeSwitch(targetView, siteId);
   } else {
-    state.views.forEach((v, id) => {
-      if (id !== siteId) {
-        try {
-          state.win.contentView.removeChildView(v);
-        } catch (e) {
-          console.warn(`Error removing child view ${id} during non-split switch:`, e.message);
-        }
-      }
-    });
-
-    state.view = targetView;
-    state.leftSiteId = siteId;
-
-    try {
-      state.win.contentView.addChildView(targetView);
-    } catch (e) {
-      console.warn('Error adding child view during non-split switch:', e.message);
-    }
-
-    const currentUrl = targetView.webContents.getURL();
-    state.win.webContents.send('page-navigated', currentUrl);
-
-    resizeViewDelayed();
-    pruneViews();
+    handleSingleModeSwitch(targetView, siteId);
   }
 
   // Sync loader overlay based on current load state of the newly active view
