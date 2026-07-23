@@ -740,8 +740,14 @@ function registerIpcHandlers() {
     const pinnedExtensions = state.settings.pinnedExtensions || [];
     const menuTemplate = [];
     
-    for (const ext of loadedExts) {
-      const metadata = await getExtensionMetadata(ext);
+    const extsWithMetadata = await Promise.all(
+      loadedExts.map(async (ext) => {
+        const metadata = await getExtensionMetadata(ext);
+        return { ext, metadata };
+      })
+    );
+
+    for (const { ext, metadata } of extsWithMetadata) {
       const popupPath = metadata.popupPath;
       
       const isPinned = pinnedExtensions.includes(ext.id);
