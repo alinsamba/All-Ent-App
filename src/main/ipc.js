@@ -546,10 +546,8 @@ function registerIpcHandlers() {
       const extensionsBaseDir = path.join(app.getPath('userData'), 'extensions');
       const extensionsDir = path.join(extensionsBaseDir, extensionId);
       
-      if (fs.existsSync(extensionsDir)) {
-        fs.rmSync(extensionsDir, { recursive: true, force: true });
-      }
-      fs.mkdirSync(extensionsDir, { recursive: true });
+      await fsp.rm(extensionsDir, { recursive: true, force: true });
+      await fsp.mkdir(extensionsDir, { recursive: true });
       
       const zip = new AdmZip(zipBuffer);
       zip.extractAllTo(extensionsDir, true);
@@ -594,9 +592,7 @@ function registerIpcHandlers() {
       const userDataExtensionsDir = path.resolve(path.join(app.getPath('userData'), 'extensions'));
       const resolvedExtPath = path.resolve(extPath);
       if (resolvedExtPath.startsWith(userDataExtensionsDir + path.sep)) {
-        if (fs.existsSync(resolvedExtPath)) {
-          fs.rmSync(resolvedExtPath, { recursive: true, force: true });
-        }
+        await fsp.rm(resolvedExtPath, { recursive: true, force: true });
       }
       
       state.settings.extensions = state.settings.extensions.filter(p => p !== extPath);
@@ -833,9 +829,7 @@ function registerIpcHandlers() {
             const userDataExtensionsDir = path.resolve(path.join(app.getPath('userData'), 'extensions'));
             const resolvedExtPath = path.resolve(ext.path);
             if (resolvedExtPath.startsWith(userDataExtensionsDir + path.sep)) {
-              if (fs.existsSync(resolvedExtPath)) {
-                fs.rmSync(resolvedExtPath, { recursive: true, force: true });
-              }
+              await fsp.rm(resolvedExtPath, { recursive: true, force: true });
             }
             state.settings.extensions = state.settings.extensions.filter(p => p !== ext.path);
             saveSettings(state.settings).catch(console.error);
