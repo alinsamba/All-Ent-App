@@ -73,6 +73,7 @@
     "@ghostery/adblocker-electron": "^2.18.1",
     "adm-zip": "^0.6.0",
     "cross-fetch": "^4.1.0",
+    "dompurify": "^3.4.12",
     "electron-squirrel-startup": "^1.0.1"
   }
 }

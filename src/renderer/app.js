@@ -236,9 +236,9 @@ let currentSettings = null;
         const textContainer = document.getElementById('loader-text');
         
         if (defaultSite.icon && defaultSite.icon.startsWith('data:')) {
-          logoContainer.innerHTML = `<img src="${defaultSite.icon}" alt="${defaultSite.name}">`;
+          logoContainer.innerHTML = DOMPurify.sanitize(`<img src="${defaultSite.icon}" alt="${defaultSite.name}">`);
         } else if (defaultSite.svg) {
-          logoContainer.innerHTML = defaultSite.svg;
+          logoContainer.innerHTML = DOMPurify.sanitize(defaultSite.svg);
         }
         textContainer.textContent = `Connecting to ${defaultSite.name}...`;
       }
@@ -315,9 +315,9 @@ let currentSettings = null;
         div.addEventListener('dragend', handleDragEnd, false);
         
         if (site.icon && site.icon.startsWith('data:')) {
-          div.innerHTML = `<img src="${site.icon}">`;
+          div.innerHTML = DOMPurify.sanitize(`<img src="${site.icon}">`);
         } else {
-          div.innerHTML = site.svg;
+          div.innerHTML = DOMPurify.sanitize(site.svg);
         }
       });
     }
@@ -341,9 +341,9 @@ let currentSettings = null;
           const textContainer = document.getElementById('loader-text');
           
           if (site.icon && site.icon.startsWith('data:')) {
-            logoContainer.innerHTML = `<img src="${site.icon}" alt="${site.name}">`;
+            logoContainer.innerHTML = DOMPurify.sanitize(`<img src="${site.icon}" alt="${site.name}">`);
           } else if (site.svg) {
-            logoContainer.innerHTML = site.svg;
+            logoContainer.innerHTML = DOMPurify.sanitize(site.svg);
           } else {
             logoContainer.innerHTML = '';
           }
@@ -526,9 +526,9 @@ let currentSettings = null;
         
         let iconHtml = '';
         if (site.icon && site.icon.startsWith('data:')) {
-          iconHtml = `<img src="${site.icon}" style="width: 20px; height: 20px; border-radius: 4px; object-fit: contain; margin-right: 10px;">`;
+          iconHtml = DOMPurify.sanitize(`<img src="${site.icon}" style="width: 20px; height: 20px; border-radius: 4px; object-fit: contain; margin-right: 10px;">`);
         } else {
-          iconHtml = `<span style="display: inline-block; width: 20px; height: 20px; margin-right: 10px; vertical-align: middle;">${site.svg}</span>`;
+          iconHtml = DOMPurify.sanitize(`<span style="display: inline-block; width: 20px; height: 20px; margin-right: 10px; vertical-align: middle;">${site.svg}</span>`);
         }
         
         const isEditing = site.id === editingSiteId;
