@@ -3,6 +3,16 @@
  * Copyright (c) 2026 Nsamba Ali. All rights reserved.
  */
 
+const CLICK_ELEMENT_FN = `
+      function clickElement(el) {
+        if (!el) return false;
+        const clickEvent = new MouseEvent('click', { bubbles: true, cancelable: true, view: window });
+        el.dispatchEvent(clickEvent);
+        if (typeof el.click === 'function') el.click();
+        return true;
+      }
+`;
+
 function playPause() {
   return `
     (function() {
@@ -24,13 +34,7 @@ function playPause() {
         }
       }
 
-      function clickElement(el) {
-        if (!el) return false;
-        const clickEvent = new MouseEvent('click', { bubbles: true, cancelable: true, view: window });
-        el.dispatchEvent(clickEvent);
-        if (typeof el.click === 'function') el.click();
-        return true;
-      }
+${CLICK_ELEMENT_FN}
 
       const playButtons = [
         '[data-testid="control-button-playpause"]', // Spotify
@@ -65,13 +69,7 @@ function playPause() {
 function nextTrack() {
   return `
     (function() {
-      function clickElement(el) {
-        if (!el) return false;
-        const clickEvent = new MouseEvent('click', { bubbles: true, cancelable: true, view: window });
-        el.dispatchEvent(clickEvent);
-        if (typeof el.click === 'function') el.click();
-        return true;
-      }
+${CLICK_ELEMENT_FN}
 
       const nextButtons = [
         '[data-testid="control-button-skip-forward"]', // Spotify
@@ -100,13 +98,7 @@ function nextTrack() {
 function prevTrack() {
   return `
     (function() {
-      function clickElement(el) {
-        if (!el) return false;
-        const clickEvent = new MouseEvent('click', { bubbles: true, cancelable: true, view: window });
-        el.dispatchEvent(clickEvent);
-        if (typeof el.click === 'function') el.click();
-        return true;
-      }
+${CLICK_ELEMENT_FN}
 
       const prevButtons = [
         '[data-testid="control-button-skip-back"]', // Spotify
